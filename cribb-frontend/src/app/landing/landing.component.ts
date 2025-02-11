@@ -16,7 +16,10 @@ export class LandingComponent {
       this.router.navigate(['/login']);
     } else if (path === 'signup') {
       this.router.navigate(['/signup']);
-    } else {
+    } else if (path === 'profile') {
+      this.router.navigate(['/profile']);
+    }
+    else {
       this.router.navigate([path]);
     }
   }
