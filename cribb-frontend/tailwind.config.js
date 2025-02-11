@@ -5,7 +5,8 @@ module.exports = {
   ],
   theme: {
     fontFamily: {
-      sans: ['"Lustria", serif']
+      sans: ['"Nunito Sans", serif'],
+      teko: ['"Teko", serif'],
     },
     extend: {
       backgroundImage: {

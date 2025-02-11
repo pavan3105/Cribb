@@ -12,6 +12,12 @@ export class LandingComponent {
   constructor(private router: Router) {}
 
   navigate(path: string) {
-    this.router.navigate([path]);
+    if (path === 'login') {
+      this.router.navigate(['/login']);
+    } else if (path === 'signup') {
+      this.router.navigate(['/signup']);
+    } else {
+      this.router.navigate([path]);
+    }
   }
 }
