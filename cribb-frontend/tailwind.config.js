@@ -5,8 +5,8 @@ module.exports = {
   ],
   theme: {
     fontFamily: {
-      sans: ['"Nunito Sans", serif'],
-      teko: ['"Teko", serif'],
+      sans: ['"Nunito Sans", serif'], // body
+      teko: ['"Teko", serif'], // heading
     },
     extend: {
       backgroundImage: {
