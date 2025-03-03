@@ -24,9 +24,15 @@ func main() {
 	http.HandleFunc("/api/users/by-username", handlers.GetUserByUsernameHandler)
 	http.HandleFunc("/api/users/by-score", handlers.GetUsersByScoreHandler)
 
+	// Group routes
 	http.HandleFunc("/api/groups", handlers.CreateGroupHandler)
 	http.HandleFunc("/api/groups/join", handlers.JoinGroupHandler)
 	http.HandleFunc("/api/groups/members", handlers.GetGroupMembersHandler)
+
+	// Chore routes
+	http.HandleFunc("/api/chores/individual", handlers.CreateIndividualChoreHandler)
+	http.HandleFunc("/api/chores/recurring", handlers.CreateRecurringChoreHandler)
+	http.HandleFunc("/api/chores/user", handlers.GetUserChoresHandler)
 
 	log.Println("Server starting on port 8080...")
 	if err := http.ListenAndServe(":8080", nil); err != nil {
