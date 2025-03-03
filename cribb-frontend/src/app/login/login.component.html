@@ -6,31 +6,65 @@
     </h1>
   </div>
   
-  <!-- Input fields for email and password -->
-  <div class="flex flex-col w-full max-w-md gap-10">
+  <!-- Input fields form with validation -->
+  <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="flex flex-col w-full max-w-md gap-6">
     <!-- Email input with icon -->
-    <div class="relative flex items-center">
-      <span class="absolute left-4 text-gray-500">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
-          <circle cx="12" cy="7" r="4"/>
-        </svg>
-      </span>
-      <input type="email" placeholder="Email" class="bg-gray-100 p-4 pl-12 rounded-lg w-full">
+    <div class="flex flex-col">
+      <div class="relative flex items-center">
+        <span class="absolute left-4 text-gray-500">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+        </span>
+        <input 
+          type="email" 
+          formControlName="email"
+          placeholder="Email" 
+          class="bg-gray-100 p-4 pl-12 rounded-lg w-full"
+          [ngClass]="{ 'border-red-500 border-2': submitted && f['email'].errors }">
+      </div>
+      <div *ngIf="submitted && f['email'].errors" class="text-red-500 text-sm mt-1">
+        <span *ngIf="f['email'].errors['required']">Email is required</span>
+        <span *ngIf="f['email'].errors['email']">Please enter a valid email address</span>
+      </div>
     </div>
 
     <!-- Password input with icon -->
-    <div class="relative flex items-center">
-      <span class="absolute left-4 text-gray-500">
-        <ng-icon name="ionLockClosed" />
-      </span>
-      <input type="password" placeholder="Password" class="bg-gray-100 p-4 pl-12 rounded-lg w-full">
+    <div class="flex flex-col">
+      <div class="relative flex items-center">
+        <span class="absolute left-4 text-gray-500">
+          <ng-icon name="ionLockClosed" />
+        </span>
+        <input 
+          [type]="showPassword ? 'text' : 'password'"
+          formControlName="password" 
+          placeholder="Password" 
+          class="bg-gray-100 p-4 pl-12 rounded-lg w-full"
+          [ngClass]="{ 'border-red-500 border-2': submitted && f['password'].errors }">
+        <button 
+          type="button" 
+          class="absolute right-4 text-gray-500"
+          (click)="togglePasswordVisibility()">
+          <ng-icon [name]="showPassword ? 'ionEyeOffOutline' : 'ionEyeOutline'"></ng-icon>
+        </button>
+      </div>
+      <div *ngIf="submitted && f['password'].errors" class="text-red-500 text-sm mt-1">
+        <span *ngIf="f['password'].errors['required']">Password is required</span>
+        <span *ngIf="f['password'].errors['minlength']">Password must be at least 6 characters</span>
+      </div>
     </div>
 
-    <button class="bg-blue-600 hover:bg-gray-900 text-white font-semibold px-3 py-4 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition duration-200">
-      Sign in
+    <!-- Display error message from server -->
+    <div *ngIf="errorMessage" class="text-red-500 text-sm mt-1">
+      {{ errorMessage }}
+    </div>
+
+    <button type="submit" [disabled]="loading" class="bg-blue-600 hover:bg-gray-900 text-white font-semibold px-3 py-4 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition duration-200 mt-4">
+      <span *ngIf="!loading">Sign in</span>
+      <span *ngIf="loading">Signing in...</span>
     </button>
-  </div>
+  </form>
 
   <!-- Decorative elements -->
   <div class="absolute top-0 right-0 w-64 h-64 bg-grey-50 rounded-full blur-3xl opacity-50 -z-10"></div>
