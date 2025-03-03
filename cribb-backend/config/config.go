@@ -71,13 +71,11 @@ func initializeDatabase() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	log.Println("Creating users collection and indexes...")
+	log.Println("Creating collections and indexes...")
 
 	// Create users collection with indexes
 	usersCollection := DB.Collection("users")
-
-	// Create indexes for users collection
-	indexModels := []mongo.IndexModel{
+	usersIndexes := []mongo.IndexModel{
 		{
 			Keys:    bson.D{{Key: "username", Value: 1}},
 			Options: options.Index().SetUnique(true),
@@ -90,11 +88,69 @@ func initializeDatabase() error {
 			Keys: bson.D{{Key: "score", Value: -1}},
 		},
 	}
-
-	// Create the indexes
-	_, err := usersCollection.Indexes().CreateMany(ctx, indexModels)
+	_, err := usersCollection.Indexes().CreateMany(ctx, usersIndexes)
 	if err != nil {
-		return fmt.Errorf("failed to create indexes: %v", err)
+		return fmt.Errorf("failed to create user indexes: %v", err)
+	}
+
+	// Create chores collection with indexes
+	choresCollection := DB.Collection("chores")
+	choresIndexes := []mongo.IndexModel{
+		{
+			Keys: bson.D{{Key: "group_id", Value: 1}},
+		},
+		{
+			Keys: bson.D{{Key: "assigned_to", Value: 1}},
+		},
+		{
+			Keys: bson.D{{Key: "status", Value: 1}},
+		},
+		{
+			Keys: bson.D{{Key: "due_date", Value: 1}},
+		},
+		{
+			Keys: bson.D{{Key: "recurring_id", Value: 1}},
+		},
+	}
+	_, err = choresCollection.Indexes().CreateMany(ctx, choresIndexes)
+	if err != nil {
+		return fmt.Errorf("failed to create chore indexes: %v", err)
+	}
+
+	// Create recurring_chores collection with indexes
+	recurringChoresCollection := DB.Collection("recurring_chores")
+	recurringChoresIndexes := []mongo.IndexModel{
+		{
+			Keys: bson.D{{Key: "group_id", Value: 1}},
+		},
+		{
+			Keys: bson.D{{Key: "is_active", Value: 1}},
+		},
+		{
+			Keys: bson.D{{Key: "next_assignment", Value: 1}},
+		},
+	}
+	_, err = recurringChoresCollection.Indexes().CreateMany(ctx, recurringChoresIndexes)
+	if err != nil {
+		return fmt.Errorf("failed to create recurring chore indexes: %v", err)
+	}
+
+	// Create chore_completions collection with indexes
+	completionsCollection := DB.Collection("chore_completions")
+	completionsIndexes := []mongo.IndexModel{
+		{
+			Keys: bson.D{{Key: "chore_id", Value: 1}},
+		},
+		{
+			Keys: bson.D{{Key: "user_id", Value: 1}},
+		},
+		{
+			Keys: bson.D{{Key: "completed_at", Value: -1}},
+		},
+	}
+	_, err = completionsCollection.Indexes().CreateMany(ctx, completionsIndexes)
+	if err != nil {
+		return fmt.Errorf("failed to create chore completion indexes: %v", err)
 	}
 
 	log.Println("Successfully initialized database collections and indexes")
