@@ -65,7 +65,7 @@ echo "==== Creating a chore ===="
 curl -X POST http://localhost:8080/api/chores/individual \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
-  -d '{"title":"Clean Kitchen","description":"Wipe counters and mop floor","group_name":"Apartment 4290","assigned_to":"testuser1","due_date":"2025-03-10T15:00:00Z","points":5}'
+  -d '{"title":"Clean Kitchen","description":"Wipe counters and mop floor","group_name":"Apartment 4290","assigned_to":"testuser95","due_date":"2025-03-10T15:00:00Z","points":5}'
 echo -e "\n"
 
 # Logout (invalidate token)
