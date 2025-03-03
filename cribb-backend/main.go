@@ -3,6 +3,7 @@ package main
 import (
 	"cribb-backend/config"
 	"cribb-backend/handlers"
+	"cribb-backend/jobs"
 	"log"
 	"net/http"
 )
@@ -10,6 +11,9 @@ import (
 func main() {
 	// Connect to MongoDB and initialize collections
 	config.ConnectDB()
+
+	// Start the chore scheduler in the background
+	jobs.StartChoreScheduler()
 
 	// Register routes
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -29,10 +33,19 @@ func main() {
 	http.HandleFunc("/api/groups/join", handlers.JoinGroupHandler)
 	http.HandleFunc("/api/groups/members", handlers.GetGroupMembersHandler)
 
-	// Chore routes
+	// Chore routes - existing
 	http.HandleFunc("/api/chores/individual", handlers.CreateIndividualChoreHandler)
 	http.HandleFunc("/api/chores/recurring", handlers.CreateRecurringChoreHandler)
 	http.HandleFunc("/api/chores/user", handlers.GetUserChoresHandler)
+
+	// Chore routes - new
+	http.HandleFunc("/api/chores/complete", handlers.CompleteChoreHandler)
+	http.HandleFunc("/api/chores/group", handlers.GetGroupChoresHandler)
+	http.HandleFunc("/api/chores/group/recurring", handlers.GetGroupRecurringChoresHandler)
+	http.HandleFunc("/api/chores/update", handlers.UpdateChoreHandler)
+	http.HandleFunc("/api/chores/delete", handlers.DeleteChoreHandler)
+	http.HandleFunc("/api/chores/recurring/update", handlers.UpdateRecurringChoreHandler)
+	http.HandleFunc("/api/chores/recurring/delete", handlers.DeleteRecurringChoreHandler)
 
 	log.Println("Server starting on port 8080...")
 	if err := http.ListenAndServe(":8080", nil); err != nil {
