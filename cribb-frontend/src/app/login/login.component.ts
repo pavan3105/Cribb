@@ -26,7 +26,7 @@ export class LoginComponent {
     private router: Router
   ) {
     this.loginForm = this.formBuilder.group({
-      email: ['', [Validators.required, Validators.email]],
+      username: ['', [Validators.required]],
       password: ['', [Validators.required, Validators.minLength(6)]]
     });
   }
@@ -43,17 +43,17 @@ export class LoginComponent {
       return;
     }
     
-    const email = this.loginForm.get('email')?.value;
+    const username = this.loginForm.get('username')?.value;
     const password = this.loginForm.get('password')?.value;
     
     // Log the values to console
     console.log('Login credentials:');
-    console.log('Email:', email);
+    console.log('Username:', username);
     console.log('Password:', password);
     
     this.loading = true;
     
-    this.apiService.login(email, password).subscribe({
+    this.apiService.login(username, password).subscribe({
       next: (response) => {
         console.log('Login successful', response);
         this.loading = false;

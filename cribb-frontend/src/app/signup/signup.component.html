@@ -42,6 +42,27 @@
           </div>
         </div>
       </div>
+
+      <!-- Username input -->
+      <div class="relative flex flex-col">
+        <div class="relative flex items-center">
+          <span class="absolute left-4 text-gray-500">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+          </span>
+          <input 
+            type="text" 
+            formControlName="username" 
+            placeholder="Username" 
+            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-4 pl-12"
+            [ngClass]="{ 'border-red-500 border-2': submitted && f['username'].errors }">
+        </div>
+        <div *ngIf="submitted && f['username'].errors" class="text-red-500 text-sm mt-1">
+          <span *ngIf="f['username'].errors['required']">Username is required</span>
+        </div>
+      </div>
   
       <!-- Phone input -->
       <div class="relative flex flex-col">
@@ -61,28 +82,6 @@
         <div *ngIf="submitted && f['phone'].errors" class="text-red-500 text-sm mt-1">
           <span *ngIf="f['phone'].errors['required']">Phone number is required</span>
           <span *ngIf="f['phone'].errors['pattern']">Please enter a valid 10-digit phone number</span>
-        </div>
-      </div>
-  
-      <!-- Email input -->
-      <div class="relative flex flex-col">
-        <div class="relative flex items-center">
-          <span class="absolute left-4 text-gray-500">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-              <polyline points="22,6 12,13 2,6"/>
-            </svg>
-          </span>
-          <input 
-            type="email" 
-            formControlName="email" 
-            placeholder="Email" 
-            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-4 pl-12"
-            [ngClass]="{ 'border-red-500 border-2': submitted && f['email'].errors }">
-        </div>
-        <div *ngIf="submitted && f['email'].errors" class="text-red-500 text-sm mt-1">
-          <span *ngIf="f['email'].errors['required']">Email is required</span>
-          <span *ngIf="f['email'].errors['email']">Please enter a valid email address</span>
         </div>
       </div>
   
@@ -111,20 +110,29 @@
           <span *ngIf="f['password'].errors['noNumber']">Password must include at least one number</span>
         </div>
       </div>
+
+      <!-- Error message -->
+      <div *ngIf="errorMessage" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded" role="alert">
+        <span class="block sm:inline">{{ errorMessage }}</span>
+      </div>
   
       <!-- Group Action Buttons -->
       <div class="flex gap-4 mt-4">
         <button 
           type="button"
+          [disabled]="loading"
           (click)="validateAndOpenJoinModal()"
           class="flex-1 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-4 text-center">
-          Join Group
+          <span *ngIf="!loading">Join Group</span>
+          <span *ngIf="loading">Processing...</span>
         </button>
         <button 
           type="button"
+          [disabled]="loading"
           (click)="validateAndOpenCreateModal()"
           class="flex-1 text-white bg-gray-800 hover:bg-gray-900 focus:ring-4 focus:outline-none focus:ring-gray-300 font-medium rounded-lg text-sm px-5 py-4 text-center">
-          Create Group
+          <span *ngIf="!loading">Create Group</span>
+          <span *ngIf="loading">Processing...</span>
         </button>
       </div>
     </form>
@@ -150,38 +158,29 @@
         <div class="p-4 md:p-5">
           <form [formGroup]="joinGroupForm" (ngSubmit)="joinGroup()" class="space-y-4">
             <div class="relative flex flex-col">
-              <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Group Password (6 letters only)</label>
-              <div class="relative flex items-center">
-                <input 
-                  [type]="showGroupPassword ? 'text' : 'password'" 
-                  formControlName="password" 
-                  class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
-                  [ngClass]="{ 'border-red-500 border-2': joinSubmitted && jf['password'].errors }">
-                <button 
-                  type="button" 
-                  class="absolute right-2 text-gray-500"
-                  (click)="toggleGroupPasswordVisibility()">
-                  <ng-icon [name]="showGroupPassword ? 'ionEyeOffOutline' : 'ionEyeOutline'"></ng-icon>
-                </button>
-              </div>
-              <div *ngIf="joinSubmitted && jf['password'].errors" class="text-red-500 text-sm mt-1">
-                <span *ngIf="jf['password'].errors['required']">Group password is required</span>
-                <span *ngIf="jf['password'].errors['minlength'] || jf['password'].errors['maxlength']">Group password must be exactly 6 letters</span>
-                <span *ngIf="jf['password'].errors['invalidFormat']">Group password must contain only letters (no numbers or special characters)</span>
-              </div>
-            </div>
-            <div class="relative flex flex-col">
-              <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Apartment Number</label>
+              <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Group Name</label>
               <input 
                 type="text" 
-                formControlName="aptNo" 
+                formControlName="group_name" 
                 class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
-                [ngClass]="{ 'border-red-500 border-2': joinSubmitted && jf['aptNo'].errors }">
-              <div *ngIf="joinSubmitted && jf['aptNo'].errors" class="text-red-500 text-sm mt-1">
-                <span *ngIf="jf['aptNo'].errors['required']">Apartment number is required</span>
+                [ngClass]="{ 'border-red-500 border-2': joinSubmitted && jf['group_name'].errors }">
+              <div *ngIf="joinSubmitted && jf['group_name'].errors" class="text-red-500 text-sm mt-1">
+                <span *ngIf="jf['group_name'].errors['required']">Group name is required</span>
               </div>
             </div>
-            <button type="submit" class="w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center">Sign Up & Join Group</button>
+            
+            <!-- Error message -->
+            <div *ngIf="errorMessage" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded" role="alert">
+              <span class="block sm:inline">{{ errorMessage }}</span>
+            </div>
+            
+            <button 
+              type="submit" 
+              [disabled]="loading"
+              class="w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
+              <span *ngIf="!loading">Join Group</span>
+              <span *ngIf="loading">Processing...</span>
+            </button>
           </form>
         </div>
       </div>
@@ -218,18 +217,19 @@
                 <span *ngIf="cf['name'].errors['required']">Group name is required</span>
               </div>
             </div>
-            <div class="relative flex flex-col">
-              <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Apartment Number</label>
-              <input 
-                type="text" 
-                formControlName="aptNo" 
-                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
-                [ngClass]="{ 'border-red-500 border-2': createSubmitted && cf['aptNo'].errors }">
-              <div *ngIf="createSubmitted && cf['aptNo'].errors" class="text-red-500 text-sm mt-1">
-                <span *ngIf="cf['aptNo'].errors['required']">Apartment number is required</span>
-              </div>
+            
+            <!-- Error message -->
+            <div *ngIf="errorMessage" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded" role="alert">
+              <span class="block sm:inline">{{ errorMessage }}</span>
             </div>
-            <button type="submit" class="w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center">Sign Up & Create Group</button>
+            
+            <button 
+              type="submit"
+              [disabled]="loading"
+              class="w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
+              <span *ngIf="!loading">Create Group</span>
+              <span *ngIf="loading">Processing...</span>
+            </button>
           </form>
         </div>
       </div>
