@@ -520,18 +520,3 @@ To run a specific test:
 ```
 go test -run TestRegisterHandler ./handlers
 ```
-
-## Complete Chore
-✓ **Complete chore successful**
-
-## Delete Recurring Chore
-✓ **Delete recurring chore successful**
-
-## Create Another Chore for Deletion Test
-✓ **Create chore for deletion successful**  
-**DELETE_CHORE_ID:** `67c6903ceceb756992a24158`
-
-## Delete Chore
-✓ **Delete chore successful**
-
-# API Testing Complete!
