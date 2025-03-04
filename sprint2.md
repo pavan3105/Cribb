@@ -405,7 +405,7 @@ go test -v ./handlers
 PASS
 ok      cribb-backend/handlers  (cached)
 
-go test -v ./middleware
+go test -v ./middleware_test
 === RUN   TestAuthMiddleware
 --- PASS: TestAuthMiddleware (0.00s)
 === RUN   TestAuthMiddlewareMissingToken
@@ -423,7 +423,7 @@ go test -v ./middleware
 PASS
 ok      cribb-backend/middleware  (cached)
 
-go test -v ./models    
+go test -v ./models_test    
 === RUN   TestCreateChore
 --- PASS: TestCreateChore (0.00s)
 === RUN   TestCreateRecurringChore
