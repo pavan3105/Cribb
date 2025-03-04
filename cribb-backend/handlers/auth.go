@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"cribb-backend/config"
+	"cribb-backend/middleware"
 	"cribb-backend/models"
 
 	"github.com/golang-jwt/jwt/v4"
@@ -84,8 +85,6 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-var jwtSecret = []byte("your_jwt_secret_key_here")
-
 type LoginRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
@@ -100,8 +99,8 @@ func generateJWTToken(userID, username string) string {
 		"exp":      time.Now().Add(time.Hour * 24 * 7).Unix(), // Token expires in 7 days
 	})
 
-	// Sign the token with our secret
-	tokenString, err := token.SignedString(jwtSecret)
+	// Sign the token with our secret from config
+	tokenString, err := token.SignedString(config.JWTSecret)
 	if err != nil {
 		return ""
 	}
@@ -198,4 +197,62 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(response)
+}
+
+func GetUserProfileHandler(w http.ResponseWriter, r *http.Request) {
+    if r.Method != http.MethodGet {
+        http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+        return
+    }
+
+    // Get user from context (set by AuthMiddleware)
+    userClaims, ok := middleware.GetUserFromContext(r.Context())
+    if !ok {
+        http.Error(w, "User not authenticated", http.StatusUnauthorized)
+        return
+    }
+
+    // Find user by ID
+    objID, err := primitive.ObjectIDFromHex(userClaims.ID)
+    if err != nil {
+        http.Error(w, "Invalid user ID", http.StatusBadRequest)
+        return
+    }
+
+    var user models.User
+    err = config.DB.Collection("users").FindOne(
+        context.Background(),
+        bson.M{"_id": objID},
+    ).Decode(&user)
+
+    if err != nil {
+        if err == mongo.ErrNoDocuments {
+            http.Error(w, "User not found", http.StatusNotFound)
+            return
+        }
+        http.Error(w, "Failed to fetch user data", http.StatusInternalServerError)
+        return
+    }
+
+    // Split name into first and last name
+    nameParts := strings.Split(user.Name, " ")
+    firstName := nameParts[0]
+    lastName := ""
+    if len(nameParts) > 1 {
+        lastName = strings.Join(nameParts[1:], " ")
+    }
+
+    // Prepare response
+    response := UserData{
+        ID:         user.ID.Hex(),
+        Email:      user.Username,
+        FirstName:  firstName,
+        LastName:   lastName,
+        Phone:      user.PhoneNumber,
+        RoomNumber: user.RoomNumber,
+    }
+
+    // Return response
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(response)
 }
