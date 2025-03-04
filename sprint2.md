@@ -340,3 +340,76 @@
 
 ## CORS
 - Configured to allow requests from `http://localhost:4200`
+
+# API Testing Log
+
+## Health Check
+✓ **Health check successful**
+
+## User Registration
+✓ **User registration successful**  
+**TOKEN:** `eyJhbGciOiJIUzI1NiIs...`  
+**USER_ID:** `67c69036eceb756992a24152`  
+**USERNAME:** `testuser1741066294`  
+**GROUP_CODE:** `SEMUWD`
+
+## Register Second User
+✓ **Second user registration successful**  
+**SECOND_USERNAME:** `testuser21741066295`
+
+## User Login
+✓ **User login successful**  
+**Updated TOKEN:** `eyJhbGciOiJIUzI1NiIs...`
+
+## Get User Profile
+✓ **Get user profile successful**
+
+## Get All Users
+✓ **Get all users successful**
+
+## Get User by Username
+✓ **Get user by username successful**
+
+## Get Users by Score
+✓ **Get users by score successful**
+
+## Get Group Members
+✓ **Get group members successful**
+
+## Create Individual Chore
+✓ **Create individual chore successful**  
+**CHORE_ID:** `67c69039eceb756992a24154`
+
+## Get User Chores
+✓ **Get user chores successful**
+
+## Get Group Chores
+✓ **Get group chores successful**
+
+## Update Chore
+✓ **Update chore successful**
+
+## Create Recurring Chore
+✓ **Create recurring chore successful**  
+**RECURRING_CHORE_ID:** `67c6903aeceb756992a24155`
+
+## Get Group Recurring Chores
+✓ **Get group recurring chores successful**
+
+## Update Recurring Chore
+✓ **Update recurring chore successful**
+
+## Complete Chore
+✓ **Complete chore successful**
+
+## Delete Recurring Chore
+✓ **Delete recurring chore successful**
+
+## Create Another Chore for Deletion Test
+✓ **Create chore for deletion successful**  
+**DELETE_CHORE_ID:** `67c6903ceceb756992a24158`
+
+## Delete Chore
+✓ **Delete chore successful**
+
+# API Testing Complete!
