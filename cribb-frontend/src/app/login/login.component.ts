@@ -31,7 +31,6 @@ export class LoginComponent {
     });
   }
 
-  // Convenience getter for easy access to form fields
   get f() { return this.loginForm.controls; }
 
   onSubmit() {
@@ -78,7 +77,7 @@ export class LoginComponent {
     this.showPassword = !this.showPassword;
   }
 
-  // Show a temporary success message (you would typically use a toast/notification service)
+  // Show a temporary success message
   private showSuccessMessage() {
     // Create a success message element
     const successDiv = document.createElement('div');

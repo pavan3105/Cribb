@@ -36,7 +36,13 @@ export class ProfileComponent implements OnInit {
             },
             error: (error) => {
                 console.error('Error loading profile:', error);
-                this.error = 'Failed to load profile data. Please try again.';
+                // If the error is due to authentication, redirect to login
+                if (error.message === 'User not authenticated') {
+                    this.apiService.logout(); // Clear any stale tokens
+                    this.router.navigate(['/login']);
+                } else {
+                    this.error = 'Failed to load profile data. Please try again.';
+                }
                 this.loading = false;
             }
         });
