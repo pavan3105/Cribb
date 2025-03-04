@@ -341,63 +341,185 @@
 ## CORS
 - Configured to allow requests from `http://localhost:4200`
 
-# API Testing Log
+# Cribb Backend Test Results
 
-## Health Check
-✓ **Health check successful**
+## Test Overview
 
-## User Registration
-✓ **User registration successful**  
-**TOKEN:** `eyJhbGciOiJIUzI1NiIs...`  
-**USER_ID:** `67c69036eceb756992a24152`  
-**USERNAME:** `testuser1741066294`  
-**GROUP_CODE:** `SEMUWD`
+The test suite for Cribb Backend includes unit tests for:
+- Authentication & user management (handlers/auth_test.go)
+- Chore management (handlers/chore_test.go)
+- Group management (handlers/group_test.go)
+- User data access (handlers/user_test.go)
+- Middleware functionality (middleware/auth_test.go)
+- Data models (models/chore_test.go)
 
-## Register Second User
-✓ **Second user registration successful**  
-**SECOND_USERNAME:** `testuser21741066295`
+## Test Approach
 
-## User Login
-✓ **User login successful**  
-**Updated TOKEN:** `eyJhbGciOiJIUzI1NiIs...`
+All tests use an in-memory database (`TestDB`) to avoid external dependencies on MongoDB. This approach:
+- Makes tests faster and more reliable
+- Isolates tests from network/database issues
+- Allows for better control of test scenarios
 
-## Get User Profile
-✓ **Get user profile successful**
+## Test Results
 
-## Get All Users
-✓ **Get all users successful**
+```
+go test -v ./handlers
+=== RUN   TestRegisterHandler
+--- PASS: TestRegisterHandler (0.06s)
+=== RUN   TestLoginHandler
+--- PASS: TestLoginHandler (0.12s)
+=== RUN   TestGetUserProfileHandler
+--- PASS: TestGetUserProfileHandler (0.00s)
+=== RUN   TestGenerateJWTToken
+--- PASS: TestGenerateJWTToken (0.00s)
+=== RUN   TestCreateIndividualChoreHandler
+--- PASS: TestCreateIndividualChoreHandler (0.00s)
+=== RUN   TestCreateRecurringChoreHandler
+--- PASS: TestCreateRecurringChoreHandler (0.00s)
+=== RUN   TestGetUserChoresHandler
+--- PASS: TestGetUserChoresHandler (0.00s)
+=== RUN   TestCompleteChoreHandler
+--- PASS: TestCompleteChoreHandler (0.00s)
+=== RUN   TestUpdateChoreHandler
+--- PASS: TestUpdateChoreHandler (0.00s)
+=== RUN   TestDeleteChoreHandler
+--- PASS: TestDeleteChoreHandler (0.00s)
+=== RUN   TestCreateGroupHandler
+--- PASS: TestCreateGroupHandler (0.00s)
+=== RUN   TestJoinGroupHandler
+--- PASS: TestJoinGroupHandler (0.00s)
+=== RUN   TestGetGroupMembersHandler
+--- PASS: TestGetGroupMembersHandler (0.00s)
+=== RUN   TestGetGroupMembersHandlerByCode
+--- PASS: TestGetGroupMembersHandlerByCode (0.00s)
+=== RUN   TestGetGroupMembersMissingParameters
+--- PASS: TestGetGroupMembersMissingParameters (0.00s)
+=== RUN   TestGetUsersHandler
+--- PASS: TestGetUsersHandler (0.00s)
+=== RUN   TestGetUserByUsernameHandler
+--- PASS: TestGetUserByUsernameHandler (0.00s)
+=== RUN   TestGetUserByUsernameMissingParameter
+--- PASS: TestGetUserByUsernameMissingParameter (0.00s)
+=== RUN   TestGetUsersByScoreHandler
+--- PASS: TestGetUsersByScoreHandler (0.00s)
+PASS
+ok      cribb-backend/handlers  (cached)
 
-## Get User by Username
-✓ **Get user by username successful**
+go test -v ./middleware
+=== RUN   TestAuthMiddleware
+--- PASS: TestAuthMiddleware (0.00s)
+=== RUN   TestAuthMiddlewareMissingToken
+--- PASS: TestAuthMiddlewareMissingToken (0.00s)
+=== RUN   TestAuthMiddlewareInvalidToken
+--- PASS: TestAuthMiddlewareInvalidToken (0.00s)
+=== RUN   TestGetUserFromContext
+--- PASS: TestGetUserFromContext (0.00s)
+=== RUN   TestGetUserFromContextMissing
+--- PASS: TestGetUserFromContextMissing (0.00s)
+=== RUN   TestCORSMiddleware
+--- PASS: TestCORSMiddleware (0.00s)
+=== RUN   TestCORSMiddlewareOptions
+--- PASS: TestCORSMiddlewareOptions (0.00s)
+PASS
+ok      cribb-backend/middleware  (cached)
 
-## Get Users by Score
-✓ **Get users by score successful**
+go test -v ./models    
+=== RUN   TestCreateChore
+--- PASS: TestCreateChore (0.00s)
+=== RUN   TestCreateRecurringChore
+--- PASS: TestCreateRecurringChore (0.00s)
+=== RUN   TestGetNextAssignee
+--- PASS: TestGetNextAssignee (0.00s)
+=== RUN   TestCreateChoreFromRecurring
+--- PASS: TestCreateChoreFromRecurring (0.00s)
+=== RUN   TestNewGroup
+--- PASS: TestNewGroup (0.00s)
+=== RUN   TestGenerateGroupCode
+--- PASS: TestGenerateGroupCode (0.00s)
+PASS
+ok      cribb-backend/models  (cached)
+```
 
-## Get Group Members
-✓ **Get group members successful**
+## Test Explanation
 
-## Create Individual Chore
-✓ **Create individual chore successful**  
-**CHORE_ID:** `67c69039eceb756992a24154`
+### Authentication & User Management Tests
 
-## Get User Chores
-✓ **Get user chores successful**
+- **TestRegisterHandler**: Verifies user registration works correctly with proper validation.
+- **TestLoginHandler**: Ensures users can log in with valid credentials and JWT tokens are generated.
+- **TestGetUserProfileHandler**: Confirms that authenticated users can retrieve their profiles.
+- **TestGenerateJWTToken**: Tests the JWT token generation function directly.
 
-## Get Group Chores
-✓ **Get group chores successful**
+### Chore Management Tests
 
-## Update Chore
-✓ **Update chore successful**
+- **TestCreateIndividualChoreHandler**: Tests creation of individual chores with proper assignment.
+- **TestCreateRecurringChoreHandler**: Verifies recurring chore creation with member rotation.
+- **TestGetUserChoresHandler**: Ensures users can retrieve their assigned chores.
+- **TestCompleteChoreHandler**: Tests the chore completion flow, including score updates.
+- **TestUpdateChoreHandler**: Verifies chore details can be updated properly.
+- **TestDeleteChoreHandler**: Tests chore deletion functionality.
 
-## Create Recurring Chore
-✓ **Create recurring chore successful**  
-**RECURRING_CHORE_ID:** `67c6903aeceb756992a24155`
+### Group Management Tests
 
-## Get Group Recurring Chores
-✓ **Get group recurring chores successful**
+- **TestCreateGroupHandler**: Tests group creation with proper validation.
+- **TestJoinGroupHandler**: Verifies users can join existing groups using codes.
+- **TestGetGroupMembersHandler**: Tests retrieving group members by group name.
+- **TestGetGroupMembersHandlerByCode**: Tests retrieving group members by group code.
+- **TestGetGroupMembersMissingParameters**: Verifies proper error handling for missing parameters.
 
-## Update Recurring Chore
-✓ **Update recurring chore successful**
+### User Data Access Tests
+
+- **TestGetUsersHandler**: Tests retrieving all users.
+- **TestGetUserByUsernameHandler**: Verifies finding users by username.
+- **TestGetUserByUsernameMissingParameter**: Tests error handling for missing parameters.
+- **TestGetUsersByScoreHandler**: Ensures users can be sorted by score correctly.
+
+### Middleware Tests
+
+- **TestAuthMiddleware**: Verifies the authentication middleware correctly checks JWT tokens.
+- **TestAuthMiddlewareMissingToken**: Tests handling of missing auth tokens.
+- **TestAuthMiddlewareInvalidToken**: Verifies rejection of invalid tokens.
+- **TestGetUserFromContext**: Ensures user details can be retrieved from the request context.
+- **TestGetUserFromContextMissing**: Tests proper handling when user details are missing.
+- **TestCORSMiddleware**: Verifies CORS headers are correctly applied.
+- **TestCORSMiddlewareOptions**: Tests handling of OPTIONS requests for CORS preflight.
+
+### Model Tests
+
+- **TestCreateChore**: Verifies chore creation with proper fields.
+- **TestCreateRecurringChore**: Tests recurring chore creation logic.
+- **TestGetNextAssignee**: Ensures proper member rotation in recurring chores.
+- **TestCreateChoreFromRecurring**: Tests generation of chore instances from recurring templates.
+- **TestNewGroup**: Verifies group creation with proper fields.
+- **TestGenerateGroupCode**: Tests the uniqueness and format of generated group codes.
+
+## Test Coverage
+
+The tests cover all the main functionality of the Cribb Backend application:
+
+- Authentication flow (register, login, profile)
+- Chore management lifecycle (create, get, update, delete, complete)
+- Recurring chore management
+- Group management (create, join, member listing)
+- User data access and sorting
+
+## Running Tests
+
+To run all tests:
+```
+go test ./...
+```
+
+To run tests for a specific package:
+```
+go test ./handlers
+go test ./middleware_test
+go test ./models_test
+```
+
+To run a specific test:
+```
+go test -run TestRegisterHandler ./handlers
+```
 
 ## Complete Chore
 ✓ **Complete chore successful**

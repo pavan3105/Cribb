@@ -153,7 +153,7 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Generate JWT token
-		token := generateJWTToken(newUser.ID.Hex(), newUser.Username)
+		token := GenerateJWTToken(newUser.ID.Hex(), newUser.Username)
 
 		// Split name into first and last name
 		nameParts := strings.Split(newUser.Name, " ")
@@ -203,8 +203,8 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
-// generateJWTToken creates a new JWT token for the authenticated user
-func generateJWTToken(userID, username string) string {
+// GenerateJWTToken creates a new JWT token for the authenticated user
+func GenerateJWTToken(userID, username string) string {
 	// Create token with claims
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"id":       userID,
@@ -282,7 +282,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Generate JWT token
-	token := generateJWTToken(user.ID.Hex(), user.Username)
+	token := GenerateJWTToken(user.ID.Hex(), user.Username)
 
 	// Split name into first and last name (assuming format is "FirstName LastName")
 	nameParts := strings.Split(user.Name, " ")
