@@ -1,23 +1,44 @@
-import { Component } from "@angular/core";
+import { Component, OnInit } from "@angular/core";
+import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
+import { NavbarComponent } from '../navbar/navbar.component';
+import { ApiService } from '../services/api.service';
 
 @Component({
     selector: 'app-profile',
     templateUrl: './profile.component.html',
+    standalone: true,
+    imports: [CommonModule, NavbarComponent]
 })
 
-export class ProfileComponent {
-    user = {
-        name: 'John Doe',
-        email: 'johndoe@example.com',
-        phone: '+1234567890',
-        group: 'Sunset Apartments',
-        room: 'A-202',
-        cribbPoints: 7
-    };
+export class ProfileComponent implements OnInit {
+    user: any = null;
+    loading = true;
+    error: string | null = null;
 
-    getRanking(points: number): string {
-        if (points > 5) return 'Good';
-        if (points < 5) return 'Poor';
-        return 'Neutral';
+    constructor(
+        private apiService: ApiService,
+        private router: Router
+    ) {}
+
+    ngOnInit(): void {
+        // Check if user is logged in
+        if (!this.apiService.isLoggedIn()) {
+            this.router.navigate(['/login']);
+            return;
+        }
+
+        // Load user profile data
+        this.apiService.getUserProfile().subscribe({
+            next: (userData) => {
+                this.user = userData;
+                this.loading = false;
+            },
+            error: (error) => {
+                console.error('Error loading profile:', error);
+                this.error = 'Failed to load profile data. Please try again.';
+                this.loading = false;
+            }
+        });
     }
 }
