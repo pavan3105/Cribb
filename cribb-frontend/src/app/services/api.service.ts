@@ -114,7 +114,6 @@ export class ApiService {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('user_data');
     console.log('User logged out');
-    // Add any additional logout logic here
   }
 
   // Check if user is logged in
@@ -154,7 +153,6 @@ export class ApiService {
         return throwError(() => new Error('User not authenticated'));
       }
       
-      // Add some additional profile data
       const mockProfile = {
         ...userData,
         createdAt: new Date().toISOString(),
