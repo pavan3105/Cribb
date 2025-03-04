@@ -87,6 +87,9 @@ func initializeDatabase() error {
 		{
 			Keys: bson.D{{Key: "score", Value: -1}},
 		},
+		{
+			Keys: bson.D{{Key: "room_number", Value: 1}},
+		},
 	}
 	_, err := usersCollection.Indexes().CreateMany(ctx, usersIndexes)
 	if err != nil {
