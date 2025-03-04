@@ -60,7 +60,15 @@ export class ApiService {
       );
   }
 
-  register(userData: any): Observable<any> {
+  register(userData: {
+    username: string;
+    password: string;
+    name: string;
+    phone_number: string;
+    room_number: string;  // Changed from roomNo to room_number
+    group?: string;
+    groupCode?: string;
+  }): Observable<any> {
     if (this.isSimulatedMode) {
       // Simulate successful registration
       console.log('Simulating registration for:', userData.username);
@@ -86,9 +94,6 @@ export class ApiService {
         })
       );
     }
-    
-    // Format the data according to the user-provided format
-    // The userData already contains the right format from the component, so just pass it through
     
     return this.http.post<any>(`${this.baseUrl}/api/register`, userData)
       .pipe(
@@ -129,7 +134,7 @@ export class ApiService {
   }
 
   // Add authorization header to requests
-  private getAuthHeaders(): HttpHeaders {
+  getAuthHeaders(): HttpHeaders {
     const token = this.getAuthToken();
     if (!token) {
       throw new Error('No auth token available');

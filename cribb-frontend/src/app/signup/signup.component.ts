@@ -66,13 +66,13 @@ export class SignupComponent implements OnInit {
     });
 
     this.joinGroupForm = this.formBuilder.group({
-      groupCode: ['', [Validators.required]], // Changed from group_name to groupCode
-      roomNo: ['', [Validators.required]] // Added roomNo
+      groupCode: ['', [Validators.required]],
+      roomNo: ['', [Validators.required]]
     });
 
     this.createGroupForm = this.formBuilder.group({
-      group: ['', [Validators.required]], // Changed from name to group
-      roomNo: ['', [Validators.required]] // Added roomNo
+      group: ['', [Validators.required]],
+      roomNo: ['', [Validators.required]]
     });
   }
 
@@ -160,34 +160,29 @@ export class SignupComponent implements OnInit {
     this.joinSubmitted = true;
     this.errorMessage = null;
     
-    // Stop here if join form is invalid
-    if (this.joinGroupForm.invalid) {
+    if (this.joinGroupForm.invalid || this.signupForm.invalid) {
       return;
     }
     
     this.loading = true;
     
-    // Get signup form and join group form data
     const signupData = this.signupForm.value;
     const joinData = this.joinGroupForm.value;
     
-    // Format the registration data
     const registrationData = {
       username: signupData.username,
       password: signupData.password,
       name: `${signupData.firstName} ${signupData.lastName}`,
       phone_number: signupData.phone,
-      groupCode: joinData.groupCode,
-      roomNo: joinData.roomNo
+      room_number: joinData.roomNo,  // Changed from roomNo to room_number
+      groupCode: joinData.groupCode
     };
     
-    // Register the user with join group data
     this.apiService.register(registrationData).subscribe({
       next: (response) => {
         console.log('Registration successful', response);
         this.loading = false;
         this.closeJoinModal();
-        // Navigate to login page instead of dashboard
         this.router.navigate(['/login']);
       },
       error: (error) => {
@@ -203,34 +198,29 @@ export class SignupComponent implements OnInit {
     this.createSubmitted = true;
     this.errorMessage = null;
     
-    // Stop here if create form is invalid
-    if (this.createGroupForm.invalid) {
+    if (this.createGroupForm.invalid || this.signupForm.invalid) {
       return;
     }
     
     this.loading = true;
     
-    // Get signup form and create group form data
     const signupData = this.signupForm.value;
     const createData = this.createGroupForm.value;
     
-    // Format the registration data
     const registrationData = {
       username: signupData.username,
       password: signupData.password,
       name: `${signupData.firstName} ${signupData.lastName}`,
       phone_number: signupData.phone,
-      group: createData.group,
-      roomNo: createData.roomNo
+      room_number: createData.roomNo,  // Changed from roomNo to room_number
+      group: createData.group
     };
     
-    // Register the user with create group data
     this.apiService.register(registrationData).subscribe({
       next: (response) => {
         console.log('Registration successful', response);
         this.loading = false;
         this.closeCreateModal();
-        // Navigate to login page instead of dashboard
         this.router.navigate(['/login']);
       },
       error: (error) => {
