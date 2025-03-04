@@ -16,6 +16,7 @@ type User struct {
 	Score       int                `bson:"score" json:"score"`
 	Group       string             `bson:"group" json:"group"`
 	GroupID     primitive.ObjectID `bson:"group_id" json:"group_id"`
+	GroupCode   string             `bson:"group_code" json:"group_code"`
 	CreatedAt   time.Time          `bson:"created_at" json:"created_at"`
 	UpdatedAt   time.Time          `bson:"updated_at" json:"updated_at"`
 }
