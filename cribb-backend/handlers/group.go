@@ -32,7 +32,7 @@ func CreateGroupHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Initialize with proper defaults
+	// Initialize with proper defaults (including group_code generation)
 	group = *models.NewGroup(group.Name)
 
 	// Insert and get generated ID
@@ -74,13 +74,13 @@ func JoinGroupHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Determine the group name from either the direct name or the group code
-	groupName := request.GroupName
-	if groupName == "" && request.GroupCode != "" {
-		groupName = request.GroupCode
-	}
-
-	if groupName == "" {
+	// Determine how to find the group - by name or by code
+	var groupFilter bson.M
+	if request.GroupName != "" {
+		groupFilter = bson.M{"name": request.GroupName}
+	} else if request.GroupCode != "" {
+		groupFilter = bson.M{"group_code": request.GroupCode}
+	} else {
 		http.Error(w, "Either group_name or groupCode is required", http.StatusBadRequest)
 		return
 	}
@@ -100,8 +100,8 @@ func JoinGroupHandler(w http.ResponseWriter, r *http.Request) {
 		var group models.Group
 		err := config.DB.Collection("groups").FindOne(
 			sc,
-			bson.M{"name": groupName},
-			options.FindOne().SetProjection(bson.M{"name": 1}),
+			groupFilter,
+			options.FindOne().SetProjection(bson.M{"name": 1, "group_code": 1}),
 		).Decode(&group)
 
 		if err != nil {
@@ -132,6 +132,7 @@ func JoinGroupHandler(w http.ResponseWriter, r *http.Request) {
 		updateFields := bson.M{
 			"group":      group.Name,
 			"group_id":   group.ID,
+			"group_code": group.GroupCode,
 			"updated_at": time.Now(),
 		}
 
@@ -209,15 +210,22 @@ func GetGroupMembersHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	groupName := r.URL.Query().Get("group_name")
-	if groupName == "" {
-		http.Error(w, "Group name is required", http.StatusBadRequest)
+	groupIdentifier := r.URL.Query().Get("group_name")
+	groupCode := r.URL.Query().Get("group_code")
+
+	var filter bson.M
+	if groupIdentifier != "" {
+		filter = bson.M{"name": groupIdentifier}
+	} else if groupCode != "" {
+		filter = bson.M{"group_code": groupCode}
+	} else {
+		http.Error(w, "Either group_name or group_code is required", http.StatusBadRequest)
 		return
 	}
 
-	// Fetch the group by name
+	// Fetch the group by name or code
 	var group models.Group
-	err := config.DB.Collection("groups").FindOne(context.Background(), bson.M{"name": groupName}).Decode(&group)
+	err := config.DB.Collection("groups").FindOne(context.Background(), filter).Decode(&group)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			http.Error(w, "Group not found", http.StatusNotFound)
