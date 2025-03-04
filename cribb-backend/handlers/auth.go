@@ -1,4 +1,3 @@
-// handlers/auth.go
 package handlers
 
 import (
@@ -24,6 +23,7 @@ type RegisterRequest struct {
 	Password    string `json:"password"`
 	Name        string `json:"name"`
 	PhoneNumber string `json:"phone_number"`
+	RoomNumber  string `json:"room_number"`
 }
 
 func RegisterHandler(w http.ResponseWriter, r *http.Request) {
@@ -57,6 +57,7 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		Password:    string(hashedPassword),
 		Name:        req.Name,
 		PhoneNumber: req.PhoneNumber,
+		RoomNumber:  req.RoomNumber,
 		Score:       10,
 		Group:       "",                    // Empty string for no group
 		GroupID:     primitive.NilObjectID, // Proper null ObjectID
@@ -109,11 +110,12 @@ func generateJWTToken(userID, username string) string {
 }
 
 type UserData struct {
-	ID        string `json:"id"`
-	Email     string `json:"email"`
-	FirstName string `json:"firstName"`
-	LastName  string `json:"lastName"`
-	Phone     string `json:"phone"`
+	ID         string `json:"id"`
+	Email      string `json:"email"`
+	FirstName  string `json:"firstName"`
+	LastName   string `json:"lastName"`
+	Phone      string `json:"phone"`
+	RoomNumber string `json:"roomNo"`
 }
 
 type LoginResponse struct {
@@ -182,11 +184,12 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		Success: true,
 		Token:   token,
 		User: UserData{
-			ID:        user.ID.Hex(),
-			Email:     user.Username, // Using username as email
-			FirstName: firstName,
-			LastName:  lastName,
-			Phone:     user.PhoneNumber,
+			ID:         user.ID.Hex(),
+			Email:      user.Username, // Using username as email
+			FirstName:  firstName,
+			LastName:   lastName,
+			Phone:      user.PhoneNumber,
+			RoomNumber: user.RoomNumber,
 		},
 		Message: "Login successful",
 	}
