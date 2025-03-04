@@ -8,7 +8,7 @@
   
   <!-- Input fields form with validation -->
   <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="flex flex-col w-full max-w-md gap-6">
-    <!-- Email input with icon -->
+    <!-- Username input with icon -->
     <div class="flex flex-col">
       <div class="relative flex items-center">
         <span class="absolute left-4 text-gray-500">
@@ -18,15 +18,14 @@
           </svg>
         </span>
         <input 
-          type="email" 
-          formControlName="email"
-          placeholder="Email" 
+          type="text" 
+          formControlName="username"
+          placeholder="Username" 
           class="bg-gray-100 p-4 pl-12 rounded-lg w-full"
-          [ngClass]="{ 'border-red-500 border-2': submitted && f['email'].errors }">
+          [ngClass]="{ 'border-red-500 border-2': submitted && f['username'].errors }">
       </div>
-      <div *ngIf="submitted && f['email'].errors" class="text-red-500 text-sm mt-1">
-        <span *ngIf="f['email'].errors['required']">Email is required</span>
-        <span *ngIf="f['email'].errors['email']">Please enter a valid email address</span>
+      <div *ngIf="submitted && f['username'].errors" class="text-red-500 text-sm mt-1">
+        <span *ngIf="f['username'].errors['required']">Username is required</span>
       </div>
     </div>
 

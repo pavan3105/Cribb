@@ -22,21 +22,6 @@ export function passwordValidator(): ValidatorFn {
   };
 }
 
-// Custom validator for group password (only letters, no numbers or special chars)
-export function groupPasswordValidator(): ValidatorFn {
-  return (control: AbstractControl): ValidationErrors | null => {
-    const value = control.value;
-    
-    if (!value) {
-      return null;
-    }
-    
-    const validFormat = /^[a-zA-Z]+$/.test(value);
-    
-    return !validFormat ? { invalidFormat: true } : null;
-  };
-}
-
 @Component({
   selector: 'app-signup',
   templateUrl: './signup.component.html',
@@ -59,11 +44,13 @@ export class SignupComponent implements OnInit {
   
   // Password visibility toggles
   showPassword = false;
-  showGroupPassword = false;
+  loading = false;
+  errorMessage: string | null = null;
 
   // Modal instances
   private joinModal: Modal | null = null;
   private createModal: Modal | null = null;
+  private registeredUsername: string = '';
 
   constructor(
     private formBuilder: FormBuilder,
@@ -74,18 +61,16 @@ export class SignupComponent implements OnInit {
       firstName: ['', [Validators.required]],
       lastName: ['', [Validators.required]],
       phone: ['', [Validators.required, Validators.pattern(/^[0-9]{10}$/)]],
-      email: ['', [Validators.required, Validators.email]],
+      username: ['', [Validators.required]],
       password: ['', [Validators.required, Validators.minLength(8), passwordValidator()]]
     });
 
     this.joinGroupForm = this.formBuilder.group({
-      password: ['', [Validators.required, Validators.minLength(6), Validators.maxLength(6), groupPasswordValidator()]],
-      aptNo: ['', [Validators.required]]
+      group_name: ['', [Validators.required]]
     });
 
     this.createGroupForm = this.formBuilder.group({
-      name: ['', [Validators.required]],
-      aptNo: ['', [Validators.required]]
+      name: ['', [Validators.required]]
     });
   }
 
@@ -115,10 +100,6 @@ export class SignupComponent implements OnInit {
     this.showPassword = !this.showPassword;
   }
 
-  toggleGroupPasswordVisibility() {
-    this.showGroupPassword = !this.showGroupPassword;
-  }
-
   // Close modal methods
   closeJoinModal(): void {
     if (this.joinModal) {
@@ -135,97 +116,89 @@ export class SignupComponent implements OnInit {
   // Validate signup form and open Join modal if valid
   validateAndOpenJoinModal(): void {
     this.submitted = true;
+    this.errorMessage = null;
     
     // Stop and show validation errors if form is invalid
     if (this.signupForm.invalid) {
       return;
     }
     
-    // If form is valid, open the join modal
-    if (this.joinModal) {
-      // Reset any previous join group form validation state
-      this.joinSubmitted = false;
-      this.joinModal.show();
-    }
+    this.loading = true;
+    
+    // First register the user
+    this.registerUser().subscribe({
+      next: (response) => {
+        console.log('Registration successful', response);
+        this.loading = false;
+        
+        // Store the username for joining the group
+        this.registeredUsername = this.signupForm.value.username;
+        
+        // If form is valid, open the join modal
+        if (this.joinModal) {
+          // Reset any previous join group form validation state
+          this.joinSubmitted = false;
+          this.joinModal.show();
+        }
+      },
+      error: (error) => {
+        console.error('Registration failed', error);
+        this.errorMessage = 'Registration failed: ' + (error.message || 'Please try again');
+        this.loading = false;
+      }
+    });
   }
   
   // Validate signup form and open Create modal if valid
   validateAndOpenCreateModal(): void {
     this.submitted = true;
+    this.errorMessage = null;
     
     // Stop and show validation errors if form is invalid
     if (this.signupForm.invalid) {
       return;
     }
     
-    // If form is valid, open the create modal
-    if (this.createModal) {
-      // Reset any previous create group form validation state
-      this.createSubmitted = false;
-      this.createModal.show();
-    }
-  }
-
-  // Register the user and handle the response
-  private registerUser(groupData?: any, isJoining: boolean = false): void {
-    // Stop here if form is invalid (we already validated in the modal open step, but checking again)
-    if (this.signupForm.invalid) {
-      return;
-    }
+    this.loading = true;
     
-    console.log('Signup data:', this.signupForm.value);
-    
-    // Call API service to register user
-    this.apiService.register(this.signupForm.value).subscribe({
+    // First register the user
+    this.registerUser().subscribe({
       next: (response) => {
         console.log('Registration successful', response);
+        this.loading = false;
         
-        if (groupData) {
-          if (isJoining) {
-            this.processJoinGroup(groupData, response);
-          } else {
-            this.processCreateGroup(groupData, response);
-          }
-        } else {
-          // Navigate to profile or another page after registration
-          this.router.navigate(['/profile']);
+        // Store the username for creating the group
+        this.registeredUsername = this.signupForm.value.username;
+        
+        // If form is valid, open the create modal
+        if (this.createModal) {
+          // Reset any previous create group form validation state
+          this.createSubmitted = false;
+          this.createModal.show();
         }
       },
       error: (error) => {
         console.error('Registration failed', error);
-        // Handle registration error
+        this.errorMessage = 'Registration failed: ' + (error.message || 'Please try again');
+        this.loading = false;
       }
     });
   }
 
-  // Process join group request after successful registration
-  private processJoinGroup(groupData: any, userResponse: any): void {
-    console.log('Joining group with data:', groupData);
+  // Register the user and return the Observable
+  private registerUser() {
+    // Format the data according to the API documentation
+    const registrationData = {
+      username: this.signupForm.value.username,
+      password: this.signupForm.value.password,
+      name: `${this.signupForm.value.firstName} ${this.signupForm.value.lastName}`,
+      phone_number: this.signupForm.value.phone
+    };
     
-    // Here you would call the API to join the group
-    // Using the response from registration (userResponse) if needed
+    console.log('Registration data:', registrationData);
     
-    // For now, just simulate success and navigate
-    console.log('Join group successful');
-    this.router.navigate(['/profile']);
-    
-    // Close modal after successful operation
-    this.closeJoinModal();
-  }
-  
-  // Process create group request after successful registration
-  private processCreateGroup(groupData: any, userResponse: any): void {
-    console.log('Creating group with data:', groupData);
-    
-    // Here you would call the API to create the group
-    // Using the response from registration (userResponse) if needed
-    
-    // For now, just simulate success and navigate
-    console.log('Create group successful');
-    this.router.navigate(['/profile']);
-    
-    // Close modal after successful operation
-    this.closeCreateModal();
+    // Call API service to register user and return the Observable
+    return this.apiService.register(registrationData);
   }
 
   joinGroup() {
@@ -236,8 +209,29 @@ export class SignupComponent implements OnInit {
       return;
     }
     
-    // If the join form is valid, register user and join group
-    this.registerUser(this.joinGroupForm.value, true);
+    this.loading = true;
+    
+    // Join the group using the API
+    this.apiService.joinGroup(
+      this.registeredUsername, 
+      this.joinGroupForm.value.group_name
+    ).subscribe({
+      next: (response) => {
+        console.log('Join group successful', response);
+        this.loading = false;
+        
+        // Close modal after successful operation
+        this.closeJoinModal();
+        
+        // Navigate to dashboard
+        this.router.navigate(['/dashboard']);
+      },
+      error: (error) => {
+        console.error('Join group failed', error);
+        this.errorMessage = 'Failed to join group: ' + (error.message || 'Please try again');
+        this.loading = false;
+      }
+    });
   }
 
   createGroup() {
@@ -248,7 +242,25 @@ export class SignupComponent implements OnInit {
       return;
     }
     
-    // If the create form is valid, register user and create group
-    this.registerUser(this.createGroupForm.value, false);
+    this.loading = true;
+    
+    // Create the group using the API
+    this.apiService.createGroup(this.createGroupForm.value.name).subscribe({
+      next: (response) => {
+        console.log('Create group successful', response);
+        this.loading = false;
+        
+        // Close modal after successful operation
+        this.closeCreateModal();
+        
+        // Navigate to dashboard
+        this.router.navigate(['/dashboard']);
+      },
+      error: (error) => {
+        console.error('Create group failed', error);
+        this.errorMessage = 'Failed to create group: ' + (error.message || 'Please try again');
+        this.loading = false;
+      }
+    });
   }
 }
