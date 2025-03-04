@@ -1,0 +1,48 @@
+<app-navbar></app-navbar>
+
+<div class="flex h-screen bg-gray-100 pt-16">
+  <!-- Sidebar/Drawer -->
+  <div 
+    class="sidebar bg-gray-900 text-white transition-all duration-300 overflow-hidden" 
+    [ngClass]="{'w-64': isDrawerOpen, 'w-16': !isDrawerOpen}"
+  >
+    <!-- Toggle button -->
+    <div class="flex justify-end p-4">
+      <button (click)="toggleDrawer()" class="text-white">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path *ngIf="isDrawerOpen" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          <path *ngIf="!isDrawerOpen" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+        </svg>
+      </button>
+    </div>
+    
+    <!-- Sidebar content (to be implemented later) -->
+    <div class="px-4" *ngIf="isDrawerOpen">
+      <!-- Sidebar links will be added here -->
+    </div>
+  </div>
+  
+  <!-- Main Content -->
+  <div class="flex-1 overflow-auto p-6">
+    <div *ngIf="loading" class="flex justify-center items-center h-full">
+      <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
+    </div>
+    
+    <div *ngIf="error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+      <span class="block sm:inline">{{ error }}</span>
+    </div>
+    
+    <div *ngIf="!loading && !error">
+      <h1 class="text-3xl font-teko font-bold mb-6">Dashboard</h1>
+      
+      <!-- Welcome message -->
+      <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h2 class="text-2xl font-teko font-semibold mb-2">Welcome, {{ user?.firstName }}!</h2>
+        <p class="text-gray-600">Apartment: {{ user?.aptNo || 'Not set' }}</p>
+      </div>
+      
+      <!-- Chores Component -->
+      <app-chores></app-chores>
+    </div>
+  </div>
+</div>
