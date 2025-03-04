@@ -131,6 +131,9 @@ export class ApiService {
   // Add authorization header to requests
   private getAuthHeaders(): HttpHeaders {
     const token = this.getAuthToken();
+    if (!token) {
+      throw new Error('No auth token available');
+    }
     return new HttpHeaders({
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
@@ -158,17 +161,15 @@ export class ApiService {
       return of(mockProfile).pipe(delay(800));
     }
     
-    // Use the current user's username to get profile data
-    const user = this.getCurrentUser();
-    if (!user || !user.username) {
+    try {
+      const headers = this.getAuthHeaders();
+      return this.http.get<any>(`${this.baseUrl}/api/users/profile`, { headers })
+        .pipe(
+          catchError(this.handleError)
+        );
+    } catch (error) {
       return throwError(() => new Error('User not authenticated'));
     }
-    
-    const headers = this.getAuthHeaders();
-    return this.http.get<any>(`${this.baseUrl}/api/users/by-username?username=${user.username}`, { headers })
-      .pipe(
-        catchError(this.handleError)
-      );
   }
 
   // Group related API calls
