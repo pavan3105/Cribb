@@ -43,7 +43,7 @@ export class ChoresComponent implements OnInit {
   };
   
   // Group information
-  groupName: string = "pink"; // We'll get this from the ApiService later
+  groupName: string = "pink"; // get this from the ApiService later
   
   // Available roommates to assign chores to
   availableRoommates: {id: string, name: string, username: string}[] = [];
@@ -173,7 +173,6 @@ export class ChoresComponent implements OnInit {
         
         console.log('Chore postponed successfully!');
         
-        // In a real app, you might want to show a success notification
       },
       error: (error) => {
         console.error('Error postponing chore:', error);

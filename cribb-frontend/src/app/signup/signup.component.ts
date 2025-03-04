@@ -212,7 +212,7 @@ export class SignupComponent implements OnInit {
       password: signupData.password,
       name: `${signupData.firstName} ${signupData.lastName}`,
       phone_number: signupData.phone,
-      room_number: createData.roomNo,  // Changed from roomNo to room_number
+      room_number: createData.roomNo,
       group: createData.group
     };
     

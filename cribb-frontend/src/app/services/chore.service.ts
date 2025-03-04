@@ -10,7 +10,7 @@ export interface Chore {
   description: string;
   group_name: string;
   assigned_to: string;
-  assignee_name?: string;  // Add this field
+  assignee_name?: string;  
   due_date: string;
   points: number;
   status: 'pending' | 'completed' | 'overdue';
@@ -38,7 +38,7 @@ export interface ChoreCompletionResponse {
 })
 export class ChoreService {
   private baseUrl = 'http://localhost:8080/api/chores';
-  private isSimulatedMode = false; // Set to true for simulated responses
+  private isSimulatedMode = false; 
 
   constructor(
     private http: HttpClient,
@@ -266,7 +266,6 @@ export class ChoreService {
     points?: number;
   }): Observable<Chore> {
     if (this.isSimulatedMode) {
-      // In a real app, you would fetch the existing chore and update it
       const mockChore: Chore = {
         id: chore.chore_id,
         title: chore.title || 'Updated Chore',
@@ -306,7 +305,6 @@ export class ChoreService {
     is_active?: boolean;
   }): Observable<RecurringChore> {
     if (this.isSimulatedMode) {
-      // In a real app, you would fetch the existing recurring chore and update it
       const mockRecurringChore: RecurringChore = {
         id: recurringChore.recurring_chore_id,
         title: recurringChore.title || 'Updated Recurring Chore',
