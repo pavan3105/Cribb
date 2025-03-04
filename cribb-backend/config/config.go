@@ -2,8 +2,10 @@ package config
 
 import (
 	"context"
+	"cribb-backend/models"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"strings"
 	"time"
@@ -18,6 +20,11 @@ var (
 	DB        *mongo.Database
 	JWTSecret []byte
 )
+
+func init() {
+	// Initialize random seed
+	rand.Seed(time.Now().UnixNano())
+}
 
 // ConnectDB initializes MongoDB connection and sets up the database
 func ConnectDB() {
@@ -84,6 +91,12 @@ func initializeDatabase() error {
 
 	log.Println("Creating collections and indexes...")
 
+	// Migrate existing groups to have group_code field
+	if err := models.MigrateExistingGroups(DB); err != nil {
+		log.Printf("Warning: Could not migrate existing groups: %v", err)
+		// Continue anyway, as this might be a fresh installation
+	}
+
 	// Create users collection with indexes
 	usersCollection := DB.Collection("users")
 	usersIndexes := []mongo.IndexModel{
@@ -105,6 +118,40 @@ func initializeDatabase() error {
 	_, err := usersCollection.Indexes().CreateMany(ctx, usersIndexes)
 	if err != nil {
 		return fmt.Errorf("failed to create user indexes: %v", err)
+	}
+
+	// Create groups collection with indexes
+	groupsCollection := DB.Collection("groups")
+
+	// Drop existing indexes
+	_, err = groupsCollection.Indexes().DropAll(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to drop group indexes: %v", err)
+	}
+
+	// First ensure all groups have a group_code
+	_, err = DB.Collection("groups").UpdateMany(
+		ctx,
+		bson.M{"group_code": bson.M{"$exists": false}},
+		bson.M{"$set": bson.M{"group_code": "LEGACY"}},
+	)
+	if err != nil {
+		log.Printf("Warning: Unable to set default group_code on existing documents: %v", err)
+	}
+
+	groupsIndexes := []mongo.IndexModel{
+		{
+			Keys:    bson.D{{Key: "name", Value: 1}},
+			Options: options.Index().SetUnique(true),
+		},
+		{
+			Keys:    bson.D{{Key: "group_code", Value: 1}},
+			Options: options.Index().SetUnique(true),
+		},
+	}
+	_, err = groupsCollection.Indexes().CreateMany(ctx, groupsIndexes)
+	if err != nil {
+		return fmt.Errorf("failed to create group indexes: %v", err)
 	}
 
 	// Create chores collection with indexes
