@@ -1,14 +1,13 @@
-<div class="flex justify-center items-center h-screen">
+<app-navbar></app-navbar>
+<div class="flex justify-center items-center min-h-[calc(100vh-64px)] py-8">
     <div class="w-96 font-teko text-3xl shadow-lg rounded-2xl p-5 bg-white">
         <h2 class="font-semibold text-center">PROFILE</h2>
         <div class="mt-4 text-2xl space-y-3">
-            <p><strong>Name:</strong> {{ user.name }}</p>
-            <p><strong>Email:</strong> {{ user.email }}</p>
-            <p><strong>Phone:</strong> {{ user.phone }}</p>
-            <p><strong>Group:</strong> {{ user.group }}</p>
-            <p><strong>Room:</strong> {{ user.room }}</p>
-            <p><strong>Cribb Points:</strong> {{ user.cribbPoints }}</p>
-            <p><strong>Ranking:</strong> {{ getRanking(user.cribbPoints) }}</p>
+            <p><strong>Name:</strong> {{ user?.firstName }} {{ user?.lastName }}</p>
+            <p><strong>Email:</strong> {{ user?.email }}</p>
+            <p><strong>Phone:</strong> {{ user?.phone }}</p>
+            <p><strong>Apartment:</strong> {{ user?.aptNo || 'Not set' }}</p>
+            <p *ngIf="user?.groupId"><strong>Group ID:</strong> {{ user?.groupId }}</p>
         </div>
         <div class="mt-6 text-center">
             <button class="bg-blue-400 hover:bg-gray-900 text-white font-semibold py-4 px-8 rounded-xl 
