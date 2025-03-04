@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strings"
 
+	"cribb-backend/config"
+
 	"github.com/golang-jwt/jwt/v4"
 )
 
@@ -44,33 +46,37 @@ func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 			// Validate the signing method
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, jwt.NewValidationError("unexpected signing method", jwt.ValidationErrorSignatureInvalid)
+				return nil, jwt.ErrSignatureInvalid
 			}
-			return []byte("your_jwt_secret_key_here"), nil // same secret used for token creation
+			return config.JWTSecret, nil
 		})
 
 		if err != nil {
-			http.Error(w, "Invalid or expired token", http.StatusUnauthorized)
+			http.Error(w, "Invalid token", http.StatusUnauthorized)
 			return
 		}
 
-		// Check if token is valid
-		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-			// Extract user information from claims
-			userClaims := UserClaims{
-				ID:       claims["id"].(string),
-				Username: claims["username"].(string),
-			}
+		if !token.Valid {
+			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			return
+		}
 
-			// Add user claims to request context
-			ctx := context.WithValue(r.Context(), UserContextKey, userClaims)
-
-			// Call the next handler with our new context
-			next(w, r.WithContext(ctx))
-		} else {
+		// Extract claims
+		claims, ok := token.Claims.(jwt.MapClaims)
+		if !ok {
 			http.Error(w, "Invalid token claims", http.StatusUnauthorized)
 			return
 		}
+
+		// Store user info in context
+		userClaims := UserClaims{
+			ID:       claims["id"].(string),
+			Username: claims["username"].(string),
+		}
+		ctx := context.WithValue(r.Context(), UserContextKey, userClaims)
+
+		// Call next handler with updated context
+		next(w, r.WithContext(ctx))
 	}
 }
 
@@ -84,9 +90,11 @@ func GetUserFromContext(ctx context.Context) (UserClaims, bool) {
 func CORSMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Set CORS headers
-		w.Header().Set("Access-Control-Allow-Origin", "*") // For development, in production use your specific domain
+		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:4200")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, Accept, X-Requested-With")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+		w.Header().Set("Access-Control-Max-Age", "3600")
 
 		// Handle preflight requests
 		if r.Method == "OPTIONS" {
@@ -94,7 +102,6 @@ func CORSMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		// Call the next handler
 		next(w, r)
 	}
 }
