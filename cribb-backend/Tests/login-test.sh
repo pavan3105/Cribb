@@ -1,7 +1,6 @@
 #!/bin/bash
 
-# Testing script for Cribb backend API with authentication
-# This script tests user registration, login, group creation, and chore management
+# Comprehensive test script for Cribb backend API
 
 # Set the base URL
 BASE_URL="http://localhost:8080"
@@ -12,10 +11,7 @@ RED='\033[0;31m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-echo -e "${BLUE}Starting Cribb API Tests${NC}"
-echo "=================================="
-
-# Function to log requests and responses
+# Utility function for logging
 log_request() {
   echo -e "${BLUE}==== $1 ====${NC}"
 }
@@ -30,231 +26,279 @@ log_response() {
   echo "=================================="
 }
 
-# Store auth token
+# Global variables to store tokens and IDs
 AUTH_TOKEN=""
+USER_ID=""
+GROUP_ID=""
+CHORE_ID=""
+RECURRING_CHORE_ID=""
 
-# 1. Register a new user
-log_request "REGISTER USER"
-REGISTER_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/api/register" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "user189",
-    "password": "password123",
-    "name": "Test User",
-    "phone_number": "7563899234"
-  }')
+# 1. User Registration Test
+register_user() {
+  log_request "REGISTER USER"
+  REGISTER_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/api/register" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "username": "testuser123",
+      "password": "testpassword",
+      "name": "Test User",
+      "phone_number": "1234567890",
+      "room_number": "101"
+    }')
 
-# Extract status code and response body
-RESPONSE_BODY=$(echo "$REGISTER_RESPONSE" | head -n 1)
-STATUS_CODE=$(echo "$REGISTER_RESPONSE" | tail -n 1)
+  RESPONSE_BODY=$(echo "$REGISTER_RESPONSE" | head -n 1)
+  STATUS_CODE=$(echo "$REGISTER_RESPONSE" | tail -n 1)
 
-log_response $STATUS_CODE "$RESPONSE_BODY"
+  log_response $STATUS_CODE "$RESPONSE_BODY"
 
-# 2. Login with the new user
-log_request "LOGIN"
-LOGIN_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/api/login" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "user189",
-    "password": "password123"
-  }')
-
-# Extract status code and response body
-RESPONSE_BODY=$(echo "$LOGIN_RESPONSE" | head -n 1)
-STATUS_CODE=$(echo "$LOGIN_RESPONSE" | tail -n 1)
-
-log_response $STATUS_CODE "$RESPONSE_BODY"
-
-# Extract the token if login was successful
-if [ $STATUS_CODE -eq 200 ]; then
+  # Extract user ID and auth token
+  USER_ID=$(echo "$RESPONSE_BODY" | grep -o '"id":"[^"]*' | sed 's/"id":"//')
   AUTH_TOKEN=$(echo "$RESPONSE_BODY" | grep -o '"token":"[^"]*' | sed 's/"token":"//')
-  echo -e "${GREEN}Extracted token: $AUTH_TOKEN${NC}"
-  echo "=================================="
-else
-  echo -e "${RED}Failed to login. Cannot continue tests.${NC}"
-  exit 1
-fi
+}
 
-# 3. Create a new group (authenticated)
-log_request "CREATE GROUP"
-CREATE_GROUP_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/api/groups" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $AUTH_TOKEN" \
-  -d '{
-    "name": "Apartment 6754"
-  }')
+# 2. Login Test
+login_test() {
+  log_request "LOGIN"
+  LOGIN_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/api/login" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "username": "testuser123",
+      "password": "testpassword"
+    }')
 
-# Extract status code and response body
-RESPONSE_BODY=$(echo "$CREATE_GROUP_RESPONSE" | head -n 1)
-STATUS_CODE=$(echo "$CREATE_GROUP_RESPONSE" | tail -n 1)
+  RESPONSE_BODY=$(echo "$LOGIN_RESPONSE" | head -n 1)
+  STATUS_CODE=$(echo "$LOGIN_RESPONSE" | tail -n 1)
 
-log_response $STATUS_CODE "$RESPONSE_BODY"
+  log_response $STATUS_CODE "$RESPONSE_BODY"
+}
 
-# Extract the group ID if creation was successful
-if [ $STATUS_CODE -eq 201 ]; then
+# 3. Get User Profile Test
+get_user_profile_test() {
+  log_request "GET USER PROFILE"
+  PROFILE_RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/api/users/profile" \
+    -H "Authorization: Bearer $AUTH_TOKEN")
+
+  RESPONSE_BODY=$(echo "$PROFILE_RESPONSE" | head -n 1)
+  STATUS_CODE=$(echo "$PROFILE_RESPONSE" | tail -n 1)
+
+  log_response $STATUS_CODE "$RESPONSE_BODY"
+}
+
+# 4. Create Group Test
+create_group_test() {
+  log_request "CREATE GROUP"
+  CREATE_GROUP_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/api/groups" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $AUTH_TOKEN" \
+    -d '{
+      "name": "Test Apartment"
+    }')
+
+  RESPONSE_BODY=$(echo "$CREATE_GROUP_RESPONSE" | head -n 1)
+  STATUS_CODE=$(echo "$CREATE_GROUP_RESPONSE" | tail -n 1)
+
+  log_response $STATUS_CODE "$RESPONSE_BODY"
+
+  # Extract group ID
   GROUP_ID=$(echo "$RESPONSE_BODY" | grep -o '"id":"[^"]*' | sed 's/"id":"//')
-  echo -e "${GREEN}Group created with ID: $GROUP_ID${NC}"
-  echo "=================================="
-else
-  echo -e "${RED}Failed to create group. Continuing tests...${NC}"
-fi
+}
 
-# 4. Join the group
-log_request "JOIN GROUP"
-JOIN_GROUP_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/api/groups/join" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $AUTH_TOKEN" \
-  -d '{
-    "username": "user189",
-    "group_name": "Apartment 6754"
-  }')
+# 5. Join Group Test (already handled during registration)
+get_group_members_test() {
+  log_request "GET GROUP MEMBERS"
+  MEMBERS_RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/api/groups/members?group_name=Test%20Apartment" \
+    -H "Authorization: Bearer $AUTH_TOKEN")
 
-# Extract status code and response body
-RESPONSE_BODY=$(echo "$JOIN_GROUP_RESPONSE" | head -n 1)
-STATUS_CODE=$(echo "$JOIN_GROUP_RESPONSE" | tail -n 1)
+  RESPONSE_BODY=$(echo "$MEMBERS_RESPONSE" | head -n 1)
+  STATUS_CODE=$(echo "$MEMBERS_RESPONSE" | tail -n 1)
 
-log_response $STATUS_CODE "$RESPONSE_BODY"
+  log_response $STATUS_CODE "$RESPONSE_BODY"
+}
 
-# 5. Get group members
-log_request "GET GROUP MEMBERS"
-GET_MEMBERS_RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/api/groups/members?group_name=Apartment%206754" \
-  -H "Authorization: Bearer $AUTH_TOKEN")
+# 6. Create Individual Chore Test
+create_individual_chore_test() {
+  log_request "CREATE INDIVIDUAL CHORE"
+  CREATE_CHORE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/api/chores/individual" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $AUTH_TOKEN" \
+    -d '{
+      "title": "Clean Kitchen",
+      "description": "Wash dishes and wipe counters",
+      "group_name": "Test Apartment",
+      "assigned_to": "testuser123",
+      "due_date": "'$(date -u -v+1d +"%Y-%m-%dT%H:%M:%SZ")'",
+      "points": 10
+    }')
 
-# Extract status code and response body
-RESPONSE_BODY=$(echo "$GET_MEMBERS_RESPONSE" | head -n 1)
-STATUS_CODE=$(echo "$GET_MEMBERS_RESPONSE" | tail -n 1)
+  RESPONSE_BODY=$(echo "$CREATE_CHORE_RESPONSE" | head -n 1)
+  STATUS_CODE=$(echo "$CREATE_CHORE_RESPONSE" | tail -n 1)
 
-log_response $STATUS_CODE "$RESPONSE_BODY"
+  log_response $STATUS_CODE "$RESPONSE_BODY"
 
-# 6. Create an individual chore
-log_request "CREATE INDIVIDUAL CHORE"
-CREATE_CHORE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/api/chores/individual" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $AUTH_TOKEN" \
-  -d '{
-    "title": "Clean Kitchen",
-    "description": "Clean counters and sink",
-    "group_name": "Apartment 6754",
-    "assigned_to": "user189",
-    "due_date": "'$(date -u -v+1d +"%Y-%m-%dT%H:%M:%SZ")'",
-    "points": 10
-  }')
-
-# Extract status code and response body
-RESPONSE_BODY=$(echo "$CREATE_CHORE_RESPONSE" | head -n 1)
-STATUS_CODE=$(echo "$CREATE_CHORE_RESPONSE" | tail -n 1)
-
-log_response $STATUS_CODE "$RESPONSE_BODY"
-
-# Extract the chore ID if creation was successful
-if [ $STATUS_CODE -eq 201 ]; then
+  # Extract chore ID
   CHORE_ID=$(echo "$RESPONSE_BODY" | grep -o '"id":"[^"]*' | sed 's/"id":"//')
-  echo -e "${GREEN}Chore created with ID: $CHORE_ID${NC}"
-  echo "=================================="
-else
-  echo -e "${RED}Failed to create chore. Continuing tests...${NC}"
-fi
+}
 
-# 7. Get user's chores
-log_request "GET USER CHORES"
-GET_CHORES_RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/api/chores/user?username=user189" \
-  -H "Authorization: Bearer $AUTH_TOKEN")
+# 7. Get User Chores Test
+get_user_chores_test() {
+  log_request "GET USER CHORES"
+  USER_CHORES_RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/api/chores/user?username=testuser123" \
+    -H "Authorization: Bearer $AUTH_TOKEN")
 
-# Extract status code and response body
-RESPONSE_BODY=$(echo "$GET_CHORES_RESPONSE" | head -n 1)
-STATUS_CODE=$(echo "$GET_CHORES_RESPONSE" | tail -n 1)
+  RESPONSE_BODY=$(echo "$USER_CHORES_RESPONSE" | head -n 1)
+  STATUS_CODE=$(echo "$USER_CHORES_RESPONSE" | tail -n 1)
 
-log_response $STATUS_CODE "$RESPONSE_BODY"
+  log_response $STATUS_CODE "$RESPONSE_BODY"
+}
 
-# 8. Complete a chore (if we have a chore ID)
-if [ ! -z "$CHORE_ID" ]; then
+# 8. Get Group Chores Test
+get_group_chores_test() {
+  log_request "GET GROUP CHORES"
+  GROUP_CHORES_RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/api/chores/group?group_name=Test%20Apartment" \
+    -H "Authorization: Bearer $AUTH_TOKEN")
+
+  RESPONSE_BODY=$(echo "$GROUP_CHORES_RESPONSE" | head -n 1)
+  STATUS_CODE=$(echo "$GROUP_CHORES_RESPONSE" | tail -n 1)
+
+  log_response $STATUS_CODE "$RESPONSE_BODY"
+}
+
+# 9. Create Recurring Chore Test
+create_recurring_chore_test() {
+  log_request "CREATE RECURRING CHORE"
+  CREATE_RECURRING_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/api/chores/recurring" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $AUTH_TOKEN" \
+    -d '{
+      "title": "Take Out Trash",
+      "description": "Empty trash bins",
+      "group_name": "Test Apartment",
+      "frequency": "weekly",
+      "points": 5
+    }')
+
+  RESPONSE_BODY=$(echo "$CREATE_RECURRING_RESPONSE" | head -n 1)
+  STATUS_CODE=$(echo "$CREATE_RECURRING_RESPONSE" | tail -n 1)
+
+  log_response $STATUS_CODE "$RESPONSE_BODY"
+
+  # Extract recurring chore ID
+  RECURRING_CHORE_ID=$(echo "$RESPONSE_BODY" | grep -o '"id":"[^"]*' | sed 's/"id":"//')
+}
+
+# 10. Get Group Recurring Chores Test
+get_group_recurring_chores_test() {
+  log_request "GET GROUP RECURRING CHORES"
+  GROUP_RECURRING_CHORES_RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/api/chores/group/recurring?group_name=Test%20Apartment" \
+    -H "Authorization: Bearer $AUTH_TOKEN")
+
+  RESPONSE_BODY=$(echo "$GROUP_RECURRING_CHORES_RESPONSE" | head -n 1)
+  STATUS_CODE=$(echo "$GROUP_RECURRING_CHORES_RESPONSE" | tail -n 1)
+
+  log_response $STATUS_CODE "$RESPONSE_BODY"
+}
+
+# 11. Complete Chore Test
+complete_chore_test() {
   log_request "COMPLETE CHORE"
   COMPLETE_CHORE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/api/chores/complete" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $AUTH_TOKEN" \
     -d '{
       "chore_id": "'$CHORE_ID'",
-      "username": "user189"
+      "username": "testuser123"
     }')
 
-  # Extract status code and response body
   RESPONSE_BODY=$(echo "$COMPLETE_CHORE_RESPONSE" | head -n 1)
   STATUS_CODE=$(echo "$COMPLETE_CHORE_RESPONSE" | tail -n 1)
 
   log_response $STATUS_CODE "$RESPONSE_BODY"
-fi
+}
 
-# 9. Create a recurring chore
-log_request "CREATE RECURRING CHORE"
-CREATE_RECURRING_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/api/chores/recurring" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $AUTH_TOKEN" \
-  -d '{
-    "title": "Take Out Trash",
-    "description": "Take trash to dumpster",
-    "group_name": "Apartment 6754",
-    "frequency": "weekly",
-    "points": 5
-  }')
+# 12. Update Chore Test
+update_chore_test() {
+  log_request "UPDATE CHORE"
+  UPDATE_CHORE_RESPONSE=$(curl -s -w "\n%{http_code}" -X PUT "$BASE_URL/api/chores/update" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $AUTH_TOKEN" \
+    -d '{
+      "chore_id": "'$CHORE_ID'",
+      "title": "Updated Clean Kitchen",
+      "points": 15
+    }')
 
-# Extract status code and response body
-RESPONSE_BODY=$(echo "$CREATE_RECURRING_RESPONSE" | head -n 1)
-STATUS_CODE=$(echo "$CREATE_RECURRING_RESPONSE" | tail -n 1)
+  RESPONSE_BODY=$(echo "$UPDATE_CHORE_RESPONSE" | head -n 1)
+  STATUS_CODE=$(echo "$UPDATE_CHORE_RESPONSE" | tail -n 1)
 
-log_response $STATUS_CODE "$RESPONSE_BODY"
+  log_response $STATUS_CODE "$RESPONSE_BODY"
+}
 
-# Extract the recurring chore ID if creation was successful
-if [ $STATUS_CODE -eq 201 ]; then
-  RECURRING_CHORE_ID=$(echo "$RESPONSE_BODY" | grep -o '"id":"[^"]*' | sed 's/"id":"//')
-  echo -e "${GREEN}Recurring chore created with ID: $RECURRING_CHORE_ID${NC}"
+# 13. Update Recurring Chore Test
+update_recurring_chore_test() {
+  log_request "UPDATE RECURRING CHORE"
+  UPDATE_RECURRING_CHORE_RESPONSE=$(curl -s -w "\n%{http_code}" -X PUT "$BASE_URL/api/chores/recurring/update" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $AUTH_TOKEN" \
+    -d '{
+      "recurring_chore_id": "'$RECURRING_CHORE_ID'",
+      "title": "Updated Take Out Trash",
+      "points": 7
+    }')
+
+  RESPONSE_BODY=$(echo "$UPDATE_RECURRING_CHORE_RESPONSE" | head -n 1)
+  STATUS_CODE=$(echo "$UPDATE_RECURRING_CHORE_RESPONSE" | tail -n 1)
+
+  log_response $STATUS_CODE "$RESPONSE_BODY"
+}
+
+# 14. Delete Chore Test
+delete_chore_test() {
+  log_request "DELETE CHORE"
+  DELETE_CHORE_RESPONSE=$(curl -s -w "\n%{http_code}" -X DELETE "$BASE_URL/api/chores/delete?chore_id=$CHORE_ID" \
+    -H "Authorization: Bearer $AUTH_TOKEN")
+
+  RESPONSE_BODY=$(echo "$DELETE_CHORE_RESPONSE" | head -n 1)
+  STATUS_CODE=$(echo "$DELETE_CHORE_RESPONSE" | tail -n 1)
+
+  log_response $STATUS_CODE "$RESPONSE_BODY"
+}
+
+# 15. Delete Recurring Chore Test
+delete_recurring_chore_test() {
+  log_request "DELETE RECURRING CHORE"
+  DELETE_RECURRING_CHORE_RESPONSE=$(curl -s -w "\n%{http_code}" -X DELETE "$BASE_URL/api/chores/recurring/delete?recurring_chore_id=$RECURRING_CHORE_ID" \
+    -H "Authorization: Bearer $AUTH_TOKEN")
+
+  RESPONSE_BODY=$(echo "$DELETE_RECURRING_CHORE_RESPONSE" | head -n 1)
+  STATUS_CODE=$(echo "$DELETE_RECURRING_CHORE_RESPONSE" | tail -n 1)
+
+  log_response $STATUS_CODE "$RESPONSE_BODY"
+}
+
+# Execute all tests
+main() {
+  echo -e "${BLUE}Starting Cribb Backend API Comprehensive Tests${NC}"
   echo "=================================="
-else
-  echo -e "${RED}Failed to create recurring chore. Continuing tests...${NC}"
-fi
 
-# 10. Get group's recurring chores
-log_request "GET GROUP RECURRING CHORES"
-GET_RECURRING_RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/api/chores/group/recurring?group_name=Apartment%206754" \
-  -H "Authorization: Bearer $AUTH_TOKEN")
+  # Run tests sequentially
+  register_user
+  login_test
+  get_user_profile_test
+  create_group_test
+  get_group_members_test
+  create_individual_chore_test
+  get_user_chores_test
+  get_group_chores_test
+  create_recurring_chore_test
+  get_group_recurring_chores_test
+  complete_chore_test
+  update_chore_test
+  update_recurring_chore_test
+  delete_chore_test
+  delete_recurring_chore_test
 
-# Extract status code and response body
-RESPONSE_BODY=$(echo "$GET_RECURRING_RESPONSE" | head -n 1)
-STATUS_CODE=$(echo "$GET_RECURRING_RESPONSE" | tail -n 1)
+  echo -e "${BLUE}All tests completed${NC}"
+}
 
-log_response $STATUS_CODE "$RESPONSE_BODY"
-
-# 11. Test authentication failure (bad token)
-log_request "TEST AUTH FAILURE"
-BAD_AUTH_RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/api/users" \
-  -H "Authorization: Bearer invalidtoken123")
-
-# Extract status code and response body
-RESPONSE_BODY=$(echo "$BAD_AUTH_RESPONSE" | head -n 1)
-STATUS_CODE=$(echo "$BAD_AUTH_RESPONSE" | tail -n 1)
-
-log_response $STATUS_CODE "$RESPONSE_BODY"
-
-# 12. Test login failure (wrong password)
-log_request "TEST LOGIN FAILURE"
-FAILED_LOGIN_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/api/login" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "user189",
-    "password": "wrongpassword"
-  }')
-
-# Extract status code and response body
-RESPONSE_BODY=$(echo "$FAILED_LOGIN_RESPONSE" | head -n 1)
-STATUS_CODE=$(echo "$FAILED_LOGIN_RESPONSE" | tail -n 1)
-
-log_response $STATUS_CODE "$RESPONSE_BODY"
-
-# Summary
-echo -e "${BLUE}Test Summary${NC}"
-echo "=================================="
-echo "- Created user: user189"
-echo "- Created group: Apartment 6754"
-echo "- Created individual chore: Clean Kitchen"
-echo "- Created recurring chore: Take Out Trash"
-echo "- Tested authentication and authorization"
-echo -e "${BLUE}Tests completed${NC}"
+# Run the main test function
+main
