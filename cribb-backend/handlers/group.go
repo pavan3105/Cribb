@@ -1,4 +1,3 @@
-// handlers/group.go
 package handlers
 
 import (
@@ -20,7 +19,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options" // MongoDB options
 )
 
-// CreateGroupHandler creates a new group
 // CreateGroupHandler creates a new group
 func CreateGroupHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -57,18 +55,33 @@ func CreateGroupHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(group)
 }
 
+type JoinGroupRequest struct {
+	Username   string `json:"username"`
+	GroupName  string `json:"group_name"`
+	GroupCode  string `json:"groupCode"`
+	RoomNumber string `json:"roomNo"`
+}
+
 func JoinGroupHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	var request struct {
-		Username  string `json:"username"`
-		GroupName string `json:"group_name"`
-	}
+	var request JoinGroupRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Determine the group name from either the direct name or the group code
+	groupName := request.GroupName
+	if groupName == "" && request.GroupCode != "" {
+		groupName = request.GroupCode
+	}
+
+	if groupName == "" {
+		http.Error(w, "Either group_name or groupCode is required", http.StatusBadRequest)
 		return
 	}
 
@@ -87,7 +100,7 @@ func JoinGroupHandler(w http.ResponseWriter, r *http.Request) {
 		var group models.Group
 		err := config.DB.Collection("groups").FindOne(
 			sc,
-			bson.M{"name": request.GroupName},
+			bson.M{"name": groupName},
 			options.FindOne().SetProjection(bson.M{"name": 1}),
 		).Decode(&group)
 
@@ -115,14 +128,21 @@ func JoinGroupHandler(w http.ResponseWriter, r *http.Request) {
 			return fmt.Errorf("failed to fetch user")
 		}
 
-		// 3. Update user document
-		userUpdate := bson.M{
-			"$set": bson.M{
-				"group":      group.Name,
-				"group_id":   group.ID,
-				"updated_at": time.Now(),
-			},
+		// 3. Update user document with room number if provided
+		updateFields := bson.M{
+			"group":      group.Name,
+			"group_id":   group.ID,
+			"updated_at": time.Now(),
 		}
+
+		if request.RoomNumber != "" {
+			updateFields["room_number"] = request.RoomNumber
+		}
+
+		userUpdate := bson.M{
+			"$set": updateFields,
+		}
+
 		userRes, err := config.DB.Collection("users").UpdateByID(
 			sc,
 			user.ID,
@@ -177,9 +197,11 @@ func JoinGroupHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "Successfully joined group",
+	})
 }
 
-// GetGroupMembersHandler retrieves all members of a group
 // GetGroupMembersHandler retrieves all members of a group by group name
 func GetGroupMembersHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
