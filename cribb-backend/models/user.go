@@ -12,6 +12,7 @@ type User struct {
 	Password    string             `bson:"password" json:"-"`
 	Name        string             `bson:"name" json:"name"`
 	PhoneNumber string             `bson:"phone_number" json:"phone_number"`
+	RoomNumber  string             `bson:"room_number" json:"room_number"`
 	Score       int                `bson:"score" json:"score"`
 	Group       string             `bson:"group" json:"group"`
 	GroupID     primitive.ObjectID `bson:"group_id" json:"group_id"`
