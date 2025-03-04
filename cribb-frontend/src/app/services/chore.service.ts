@@ -10,6 +10,7 @@ export interface Chore {
   description: string;
   group_name: string;
   assigned_to: string;
+  assignee_name?: string;  // Add this field
   due_date: string;
   points: number;
   status: 'pending' | 'completed' | 'overdue';
@@ -238,7 +239,7 @@ export class ChoreService {
   }
 
   // Mark chore as complete
-  completeChore(choreId: string, username: string): Observable<ChoreCompletionResponse> {
+  completeChore(choreId: string, userId: string): Observable<ChoreCompletionResponse> {
     if (this.isSimulatedMode) {
       const mockResponse: ChoreCompletionResponse = {
         points_earned: Math.floor(Math.random() * 10) + 1,
@@ -251,7 +252,7 @@ export class ChoreService {
     const headers = this.apiService.getAuthHeaders();
     return this.http.post<ChoreCompletionResponse>(`${this.baseUrl}/complete`, {
       chore_id: choreId,
-      username: username
+      user_id: userId
     }, { headers });
   }
 

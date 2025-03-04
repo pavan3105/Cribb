@@ -43,7 +43,7 @@ export class ChoresComponent implements OnInit {
   };
   
   // Group information
-  groupName: string = 'Apartment 101'; // We'll get this from the ApiService later
+  groupName: string = "pink"; // We'll get this from the ApiService later
   
   // Available roommates to assign chores to
   availableRoommates: {id: string, name: string, username: string}[] = [];
@@ -67,37 +67,20 @@ export class ChoresComponent implements OnInit {
   }
   
   loadRoommates(): void {
-    // In a real app, you would get this from an API
-    // For now, we'll use mock data
-    const currentUser = this.apiService.getCurrentUser();
-    
-    // Mock roommates data
-    this.availableRoommates = [
-      { 
-        id: '12345', 
-        name: 'John Doe', 
-        username: 'john_doe' 
+    this.apiService.getGroupMembers(this.groupName).subscribe({
+      next: (members) => {
+        this.availableRoommates = members.map((member: any) => ({
+          id: member._id,  // Store the MongoDB ObjectID
+          name: member.name || `${member.firstName} ${member.lastName}`,
+          username: member.username
+        }));
       },
-      { 
-        id: '67890', 
-        name: 'Jane Smith', 
-        username: 'jane_smith' 
-      },
-      { 
-        id: '45678', 
-        name: 'Robert Johnson', 
-        username: 'robert_johnson' 
+      error: (error) => {
+        console.error('Error loading group members:', error);
+        this.error = 'Failed to load group members. Please try again.';
+        setTimeout(() => this.error = null, 3000);
       }
-    ];
-    
-    // Add current user to roommates if they're logged in
-    if (currentUser) {
-      this.availableRoommates.push({
-        id: currentUser.id,
-        name: `${currentUser.firstName} ${currentUser.lastName}`,
-        username: `${currentUser.firstName.toLowerCase()}_${currentUser.lastName.toLowerCase()}`
-      });
-    }
+    });
   }
   
   loadGroupChores(): void {
@@ -135,28 +118,28 @@ export class ChoresComponent implements OnInit {
   isYourTurn(chore: Chore): boolean {
     const currentUser = this.apiService.getCurrentUser();
     if (!currentUser) return false;
+
+    // First check the assigned_to field with user ID
+    if (chore.assigned_to === currentUser.id) return true;
+
+    // If not found by ID, try to find by username
+    const roommate = this.availableRoommates.find(r => r.id === chore.assigned_to);
+    if (roommate) {
+      return roommate.id === currentUser.id;
+    }
     
-    const username = `${currentUser.firstName.toLowerCase()}_${currentUser.lastName.toLowerCase()}`;
-    return chore.assigned_to === username;
+    return false;
   }
   
   completeChore(choreId: string): void {
     const currentUser = this.apiService.getCurrentUser();
     if (!currentUser) return;
     
-    const username = `${currentUser.firstName.toLowerCase()}_${currentUser.lastName.toLowerCase()}`;
-    
-    this.choreService.completeChore(choreId, username).subscribe({
+    this.choreService.completeChore(choreId, currentUser.id).subscribe({
       next: (response) => {
-        // Update local state
-        const chore = this.chores.find(c => c.id === choreId);
-        if (chore) {
-          chore.status = 'completed';
-        }
-        
         console.log(`Chore completed! Earned ${response.points_earned} points. New score: ${response.new_score}`);
-        
-        // In a real app, you might want to show a success notification
+        // Don't update local state, instead reload from server to get the new chore instance
+        this.loadGroupChores();
       },
       error: (error) => {
         console.error('Error completing chore:', error);
@@ -294,6 +277,9 @@ export class ChoresComponent implements OnInit {
         // Reset the form and hide loading indicator
         this.resetChoreForm();
         this.loading = false;
+        
+        // Reload chores to get the actual server-created chore instance
+        this.reloadChores();
       },
       error: (error) => {
         this.loading = false;
@@ -365,9 +351,27 @@ export class ChoresComponent implements OnInit {
     this.showNewChoreForm = false;
   }
   
-  getUserDisplayName(username: string): string {
-    const roommate = this.availableRoommates.find(r => r.username === username);
-    return roommate ? roommate.name : username;
+  getUserDisplayName(userIdOrUsername: string): string {
+    // First check if we have the assignee name directly from the backend
+    const chore = this.chores.find(c => c.assigned_to === userIdOrUsername);
+    if (chore?.assignee_name) {
+      return chore.assignee_name;
+    }
+
+    // If not found by username or no assignee_name, try to find by ID
+    let roommate = this.availableRoommates.find(r => r.id === userIdOrUsername);
+    if (roommate) {
+      return roommate.name;
+    }
+    
+    // If still not found, try to find by username in availableRoommates
+    roommate = this.availableRoommates.find(r => r.username === userIdOrUsername);
+    if (roommate) {
+      return roommate.name;
+    }
+    
+    // If still not found, return the original value
+    return userIdOrUsername;
   }
   
   setActiveTab(tab: 'all' | 'yours' | 'overdue' | 'completed'): void {
@@ -375,13 +379,9 @@ export class ChoresComponent implements OnInit {
   }
   
   get filteredChores(): Chore[] {
-    const currentUser = this.apiService.getCurrentUser();
-    const username = currentUser ? 
-      `${currentUser.firstName.toLowerCase()}_${currentUser.lastName.toLowerCase()}` : '';
-    
     switch (this.activeTab) {
       case 'yours':
-        return this.chores.filter(chore => chore.assigned_to === username);
+        return this.chores.filter(chore => this.isYourTurn(chore));
       case 'overdue':
         return this.chores.filter(chore => chore.status === 'overdue');
       case 'completed':

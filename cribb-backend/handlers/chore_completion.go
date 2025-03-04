@@ -14,7 +14,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // CompleteChoreHandler handles the completion of a chore by a user
@@ -25,8 +24,8 @@ func CompleteChoreHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var request struct {
-		ChoreID  string `json:"chore_id"`
-		Username string `json:"username"`
+		ChoreID string `json:"chore_id"`
+		UserID  string `json:"user_id"` // Changed from Username to UserID
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
@@ -35,8 +34,8 @@ func CompleteChoreHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate required fields
-	if request.ChoreID == "" || request.Username == "" {
-		http.Error(w, "Chore ID and username are required", http.StatusBadRequest)
+	if request.ChoreID == "" || request.UserID == "" {
+		http.Error(w, "Chore ID and user ID are required", http.StatusBadRequest)
 		return
 	}
 
@@ -44,6 +43,13 @@ func CompleteChoreHandler(w http.ResponseWriter, r *http.Request) {
 	choreID, err := primitive.ObjectIDFromHex(request.ChoreID)
 	if err != nil {
 		http.Error(w, "Invalid chore ID format", http.StatusBadRequest)
+		return
+	}
+
+	// Convert user ID from string to ObjectID
+	userID, err := primitive.ObjectIDFromHex(request.UserID)
+	if err != nil {
+		http.Error(w, "Invalid user ID format", http.StatusBadRequest)
 		return
 	}
 
@@ -58,11 +64,11 @@ func CompleteChoreHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Define the transaction
 	result, err := session.WithTransaction(context.Background(), func(sessionContext mongo.SessionContext) (interface{}, error) {
-		// 1. Get the user
+		// 1. Get the user by ID
 		var user models.User
 		err := config.DB.Collection("users").FindOne(
 			sessionContext,
-			bson.M{"username": request.Username},
+			bson.M{"_id": userID},
 		).Decode(&user)
 
 		if err != nil {
@@ -87,7 +93,7 @@ func CompleteChoreHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// 3. Verify the chore is assigned to the user
-		if chore.AssignedTo != user.ID {
+		if chore.AssignedTo != userID {
 			return nil, errors.New("chore is not assigned to this user")
 		}
 
@@ -236,11 +242,25 @@ func GetGroupChoresHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get all chores for the group, including their statuses
-	cursor, err := config.DB.Collection("chores").Find(
+	// Get all chores for the group, excluding completed recurring chores
+	// We'll only show completed chores if they're individual chores or the most recent instance of a recurring chore
+	pipeline := mongo.Pipeline{
+		{{Key: "$match", Value: bson.M{"group_id": group.ID}}},
+		{{Key: "$sort", Value: bson.D{
+			{Key: "recurring_id", Value: 1},
+			{Key: "created_at", Value: -1},
+		}}},
+		{{Key: "$group", Value: bson.M{
+			"_id": "$recurring_id",
+			"doc": bson.M{"$first": "$$ROOT"},
+		}}},
+		{{Key: "$replaceRoot", Value: bson.M{"newRoot": "$doc"}}},
+		{{Key: "$sort", Value: bson.D{{Key: "due_date", Value: 1}}}},
+	}
+
+	cursor, err := config.DB.Collection("chores").Aggregate(
 		context.Background(),
-		bson.M{"group_id": group.ID},
-		options.Find().SetSort(bson.D{{Key: "due_date", Value: 1}}),
+		pipeline,
 	)
 	if err != nil {
 		http.Error(w, "Failed to fetch chores", http.StatusInternalServerError)
