@@ -14,7 +14,10 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var DB *mongo.Database
+var (
+	DB        *mongo.Database
+	JWTSecret []byte
+)
 
 // ConnectDB initializes MongoDB connection and sets up the database
 func ConnectDB() {
@@ -26,6 +29,7 @@ func ConnectDB() {
 	// Get and validate environment variables
 	mongoURI := strings.TrimSpace(os.Getenv("MONGODB_URI"))
 	dbName := strings.TrimSpace(os.Getenv("DB_NAME"))
+	jwtSecret := strings.TrimSpace(os.Getenv("JWT_SECRET"))
 
 	if mongoURI == "" {
 		log.Fatal("MONGODB_URI is required in .env file")
@@ -34,6 +38,13 @@ func ConnectDB() {
 	if dbName == "" {
 		log.Fatal("DB_NAME is required in .env file")
 	}
+
+	if jwtSecret == "" {
+		log.Fatal("JWT_SECRET is required in .env file")
+	}
+
+	// Set JWT secret
+	JWTSecret = []byte(jwtSecret)
 
 	log.Printf("Attempting to connect to MongoDB...")
 

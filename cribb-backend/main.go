@@ -26,6 +26,7 @@ func main() {
 	http.HandleFunc("/api/login", middleware.CORSMiddleware(handlers.LoginHandler))
 
 	// User routes - wrap existing middleware with CORS middleware
+	http.HandleFunc("/api/users/profile", middleware.CORSMiddleware(middleware.AuthMiddleware(handlers.GetUserProfileHandler)))
 	http.HandleFunc("/api/users", middleware.CORSMiddleware(middleware.AuthMiddleware(handlers.GetUsersHandler)))
 	http.HandleFunc("/api/users/by-username", middleware.CORSMiddleware(middleware.AuthMiddleware(handlers.GetUserByUsernameHandler)))
 	http.HandleFunc("/api/users/by-score", middleware.CORSMiddleware(middleware.AuthMiddleware(handlers.GetUsersByScoreHandler)))
