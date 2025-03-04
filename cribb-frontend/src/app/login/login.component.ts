@@ -61,9 +61,9 @@ export class LoginComponent {
         // Show success message
         this.showSuccessMessage();
         
-        // Navigate to profile page after successful login
+        // Navigate to dashboard page after successful login instead of profile
         setTimeout(() => {
-          this.router.navigate(['/profile']);
+          this.router.navigate(['/dashboard']);
         }, 1000); // Short delay for better UX
       },
       error: (error) => {
