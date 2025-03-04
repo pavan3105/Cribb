@@ -36,8 +36,8 @@ export interface ChoreCompletionResponse {
   providedIn: 'root'
 })
 export class ChoreService {
-  private baseUrl = 'http://localhost:3000/api/chores';
-  private isSimulatedMode = true; // Set to true for simulated responses
+  private baseUrl = 'http://localhost:8080/api/chores';
+  private isSimulatedMode = false; // Set to true for simulated responses
 
   constructor(
     private http: HttpClient,
@@ -86,7 +86,8 @@ export class ChoreService {
 
     const currentUser = this.apiService.getCurrentUser();
     const username = `${currentUser.firstName.toLowerCase()}_${currentUser.lastName.toLowerCase()}`;
-    return this.http.get<Chore[]>(`${this.baseUrl}/user?username=${username}`);
+    const headers = this.apiService.getAuthHeaders();
+    return this.http.get<Chore[]>(`${this.baseUrl}/user?username=${username}`, { headers });
   }
 
   // Get all chores for a group
@@ -145,7 +146,8 @@ export class ChoreService {
       return of(mockChores).pipe(delay(800));
     }
 
-    return this.http.get<Chore[]>(`${this.baseUrl}/group?group_name=${encodeURIComponent(groupName)}`);
+    const headers = this.apiService.getAuthHeaders();
+    return this.http.get<Chore[]>(`${this.baseUrl}/group?group_name=${encodeURIComponent(groupName)}`, { headers });
   }
 
   // Get recurring chores for a group
@@ -185,7 +187,8 @@ export class ChoreService {
       return of(mockRecurringChores).pipe(delay(800));
     }
 
-    return this.http.get<RecurringChore[]>(`${this.baseUrl}/group/recurring?group_name=${encodeURIComponent(groupName)}`);
+    const headers = this.apiService.getAuthHeaders();
+    return this.http.get<RecurringChore[]>(`${this.baseUrl}/group/recurring?group_name=${encodeURIComponent(groupName)}`, { headers });
   }
 
   // Create individual chore
@@ -208,7 +211,8 @@ export class ChoreService {
       return of(mockChore).pipe(delay(800));
     }
 
-    return this.http.post<Chore>(`${this.baseUrl}/individual`, chore);
+    const headers = this.apiService.getAuthHeaders();
+    return this.http.post<Chore>(`${this.baseUrl}/individual`, chore, { headers });
   }
 
   // Create recurring chore
@@ -229,7 +233,8 @@ export class ChoreService {
       return of(mockRecurringChore).pipe(delay(800));
     }
 
-    return this.http.post<RecurringChore>(`${this.baseUrl}/recurring`, chore);
+    const headers = this.apiService.getAuthHeaders();
+    return this.http.post<RecurringChore>(`${this.baseUrl}/recurring`, chore, { headers });
   }
 
   // Mark chore as complete
@@ -243,10 +248,11 @@ export class ChoreService {
       return of(mockResponse).pipe(delay(800));
     }
 
+    const headers = this.apiService.getAuthHeaders();
     return this.http.post<ChoreCompletionResponse>(`${this.baseUrl}/complete`, {
       chore_id: choreId,
       username: username
-    });
+    }, { headers });
   }
 
   // Update a chore
@@ -275,7 +281,8 @@ export class ChoreService {
       return of(mockChore).pipe(delay(800));
     }
 
-    return this.http.put<Chore>(`${this.baseUrl}/update`, chore);
+    const headers = this.apiService.getAuthHeaders();
+    return this.http.put<Chore>(`${this.baseUrl}/update`, chore, { headers });
   }
 
   // Delete a chore
@@ -284,7 +291,8 @@ export class ChoreService {
       return of({ message: 'Chore deleted successfully' }).pipe(delay(800));
     }
 
-    return this.http.delete<{message: string}>(`${this.baseUrl}/delete?chore_id=${choreId}`);
+    const headers = this.apiService.getAuthHeaders();
+    return this.http.delete<{message: string}>(`${this.baseUrl}/delete?chore_id=${choreId}`, { headers });
   }
 
   // Update a recurring chore
@@ -311,7 +319,8 @@ export class ChoreService {
       return of(mockRecurringChore).pipe(delay(800));
     }
 
-    return this.http.put<RecurringChore>(`${this.baseUrl}/recurring/update`, recurringChore);
+    const headers = this.apiService.getAuthHeaders();
+    return this.http.put<RecurringChore>(`${this.baseUrl}/recurring/update`, recurringChore, { headers });
   }
 
   // Delete a recurring chore
@@ -320,6 +329,7 @@ export class ChoreService {
       return of({ message: 'Recurring chore deleted successfully' }).pipe(delay(800));
     }
 
-    return this.http.delete<{message: string}>(`${this.baseUrl}/recurring/delete?recurring_chore_id=${recurringChoreId}`);
+    const headers = this.apiService.getAuthHeaders();
+    return this.http.delete<{message: string}>(`${this.baseUrl}/recurring/delete?recurring_chore_id=${recurringChoreId}`, { headers });
   }
 }
