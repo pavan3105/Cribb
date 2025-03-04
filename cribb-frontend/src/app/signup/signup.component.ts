@@ -186,17 +186,9 @@ export class SignupComponent implements OnInit {
       next: (response) => {
         console.log('Registration successful', response);
         this.loading = false;
-        
-        // Store token if provided
-        if (response && response.token) {
-          localStorage.setItem('auth_token', response.token);
-          if (response.user) {
-            localStorage.setItem('user_data', JSON.stringify(response.user));
-          }
-        }
-        
-        // Navigate to dashboard
-        this.router.navigate(['/dashboard']);
+        this.closeJoinModal();
+        // Navigate to login page instead of dashboard
+        this.router.navigate(['/login']);
       },
       error: (error) => {
         console.error('Registration failed', error);
@@ -237,17 +229,9 @@ export class SignupComponent implements OnInit {
       next: (response) => {
         console.log('Registration successful', response);
         this.loading = false;
-        
-        // Store token if provided
-        if (response && response.token) {
-          localStorage.setItem('auth_token', response.token);
-          if (response.user) {
-            localStorage.setItem('user_data', JSON.stringify(response.user));
-          }
-        }
-        
-        // Navigate to dashboard
-        this.router.navigate(['/dashboard']);
+        this.closeCreateModal();
+        // Navigate to login page instead of dashboard
+        this.router.navigate(['/login']);
       },
       error: (error) => {
         console.error('Registration failed', error);
