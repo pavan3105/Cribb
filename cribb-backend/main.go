@@ -4,6 +4,7 @@ import (
 	"cribb-backend/config"
 	"cribb-backend/handlers"
 	"cribb-backend/jobs"
+	"cribb-backend/middleware"
 	"log"
 	"net/http"
 )
@@ -22,30 +23,31 @@ func main() {
 
 	// Auth routes
 	http.HandleFunc("/api/register", handlers.RegisterHandler)
+	http.HandleFunc("/api/login", handlers.LoginHandler) // New login route
 
-	// User routes
-	http.HandleFunc("/api/users", handlers.GetUsersHandler)
-	http.HandleFunc("/api/users/by-username", handlers.GetUserByUsernameHandler)
-	http.HandleFunc("/api/users/by-score", handlers.GetUsersByScoreHandler)
+	// User routes - some protected, some public
+	http.HandleFunc("/api/users", middleware.AuthMiddleware(handlers.GetUsersHandler))
+	http.HandleFunc("/api/users/by-username", middleware.AuthMiddleware(handlers.GetUserByUsernameHandler))
+	http.HandleFunc("/api/users/by-score", middleware.AuthMiddleware(handlers.GetUsersByScoreHandler))
 
-	// Group routes
-	http.HandleFunc("/api/groups", handlers.CreateGroupHandler)
-	http.HandleFunc("/api/groups/join", handlers.JoinGroupHandler)
-	http.HandleFunc("/api/groups/members", handlers.GetGroupMembersHandler)
+	// Group routes - all protected
+	http.HandleFunc("/api/groups", middleware.AuthMiddleware(handlers.CreateGroupHandler))
+	http.HandleFunc("/api/groups/join", middleware.AuthMiddleware(handlers.JoinGroupHandler))
+	http.HandleFunc("/api/groups/members", middleware.AuthMiddleware(handlers.GetGroupMembersHandler))
 
-	// Chore routes - existing
-	http.HandleFunc("/api/chores/individual", handlers.CreateIndividualChoreHandler)
-	http.HandleFunc("/api/chores/recurring", handlers.CreateRecurringChoreHandler)
-	http.HandleFunc("/api/chores/user", handlers.GetUserChoresHandler)
+	// Chore routes - existing - all protected
+	http.HandleFunc("/api/chores/individual", middleware.AuthMiddleware(handlers.CreateIndividualChoreHandler))
+	http.HandleFunc("/api/chores/recurring", middleware.AuthMiddleware(handlers.CreateRecurringChoreHandler))
+	http.HandleFunc("/api/chores/user", middleware.AuthMiddleware(handlers.GetUserChoresHandler))
 
-	// Chore routes - new
-	http.HandleFunc("/api/chores/complete", handlers.CompleteChoreHandler)
-	http.HandleFunc("/api/chores/group", handlers.GetGroupChoresHandler)
-	http.HandleFunc("/api/chores/group/recurring", handlers.GetGroupRecurringChoresHandler)
-	http.HandleFunc("/api/chores/update", handlers.UpdateChoreHandler)
-	http.HandleFunc("/api/chores/delete", handlers.DeleteChoreHandler)
-	http.HandleFunc("/api/chores/recurring/update", handlers.UpdateRecurringChoreHandler)
-	http.HandleFunc("/api/chores/recurring/delete", handlers.DeleteRecurringChoreHandler)
+	// Chore routes - new - all protected
+	http.HandleFunc("/api/chores/complete", middleware.AuthMiddleware(handlers.CompleteChoreHandler))
+	http.HandleFunc("/api/chores/group", middleware.AuthMiddleware(handlers.GetGroupChoresHandler))
+	http.HandleFunc("/api/chores/group/recurring", middleware.AuthMiddleware(handlers.GetGroupRecurringChoresHandler))
+	http.HandleFunc("/api/chores/update", middleware.AuthMiddleware(handlers.UpdateChoreHandler))
+	http.HandleFunc("/api/chores/delete", middleware.AuthMiddleware(handlers.DeleteChoreHandler))
+	http.HandleFunc("/api/chores/recurring/update", middleware.AuthMiddleware(handlers.UpdateRecurringChoreHandler))
+	http.HandleFunc("/api/chores/recurring/delete", middleware.AuthMiddleware(handlers.DeleteRecurringChoreHandler))
 
 	log.Println("Server starting on port 8080...")
 	if err := http.ListenAndServe(":8080", nil); err != nil {
