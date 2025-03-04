@@ -63,7 +63,7 @@ export class ApiService {
   register(userData: any): Observable<any> {
     if (this.isSimulatedMode) {
       // Simulate successful registration
-      console.log('Simulating registration for:', userData.email);
+      console.log('Simulating registration for:', userData.username);
       
       // Create mock response
       const mockResponse = {
@@ -87,16 +87,20 @@ export class ApiService {
       );
     }
     
-    // Format the data according to the API documentation
-    const registrationData = {
-      username: userData.email, // Using email as username
-      password: userData.password,
-      name: `${userData.firstName} ${userData.lastName}`,
-      phone_number: userData.phone
-    };
+    // Format the data according to the user-provided format
+    // The userData already contains the right format from the component, so just pass it through
     
-    return this.http.post<any>(`${this.baseUrl}/api/register`, registrationData)
+    return this.http.post<any>(`${this.baseUrl}/api/register`, userData)
       .pipe(
+        tap(response => {
+          // Store token if provided
+          if (response && response.token) {
+            localStorage.setItem('auth_token', response.token);
+            if (response.user) {
+              localStorage.setItem('user_data', JSON.stringify(response.user));
+            }
+          }
+        }),
         catchError(this.handleError)
       );
   }

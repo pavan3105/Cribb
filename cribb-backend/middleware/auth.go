@@ -79,3 +79,22 @@ func GetUserFromContext(ctx context.Context) (UserClaims, bool) {
 	user, ok := ctx.Value(UserContextKey).(UserClaims)
 	return user, ok
 }
+
+// CORSMiddleware handles Cross-Origin Resource Sharing
+func CORSMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Set CORS headers
+		w.Header().Set("Access-Control-Allow-Origin", "*") // For development, in production use your specific domain
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+		// Handle preflight requests
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		// Call the next handler
+		next(w, r)
+	}
+}

@@ -121,7 +121,7 @@
         <button 
           type="button"
           [disabled]="loading"
-          (click)="validateAndOpenJoinModal()"
+          (click)="openJoinModal()"
           class="flex-1 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-4 text-center">
           <span *ngIf="!loading">Join Group</span>
           <span *ngIf="loading">Processing...</span>
@@ -129,7 +129,7 @@
         <button 
           type="button"
           [disabled]="loading"
-          (click)="validateAndOpenCreateModal()"
+          (click)="openCreateModal()"
           class="flex-1 text-white bg-gray-800 hover:bg-gray-900 focus:ring-4 focus:outline-none focus:ring-gray-300 font-medium rounded-lg text-sm px-5 py-4 text-center">
           <span *ngIf="!loading">Create Group</span>
           <span *ngIf="loading">Processing...</span>
@@ -158,14 +158,26 @@
         <div class="p-4 md:p-5">
           <form [formGroup]="joinGroupForm" (ngSubmit)="joinGroup()" class="space-y-4">
             <div class="relative flex flex-col">
-              <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Group Name</label>
+              <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Group Code</label>
               <input 
                 type="text" 
-                formControlName="group_name" 
+                formControlName="groupCode" 
                 class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
-                [ngClass]="{ 'border-red-500 border-2': joinSubmitted && jf['group_name'].errors }">
-              <div *ngIf="joinSubmitted && jf['group_name'].errors" class="text-red-500 text-sm mt-1">
-                <span *ngIf="jf['group_name'].errors['required']">Group name is required</span>
+                [ngClass]="{ 'border-red-500 border-2': joinSubmitted && jf['groupCode'].errors }">
+              <div *ngIf="joinSubmitted && jf['groupCode'].errors" class="text-red-500 text-sm mt-1">
+                <span *ngIf="jf['groupCode'].errors['required']">Group code is required</span>
+              </div>
+            </div>
+
+            <div class="relative flex flex-col">
+              <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Room Number</label>
+              <input 
+                type="text" 
+                formControlName="roomNo" 
+                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                [ngClass]="{ 'border-red-500 border-2': joinSubmitted && jf['roomNo'].errors }">
+              <div *ngIf="joinSubmitted && jf['roomNo'].errors" class="text-red-500 text-sm mt-1">
+                <span *ngIf="jf['roomNo'].errors['required']">Room number is required</span>
               </div>
             </div>
             
@@ -178,7 +190,7 @@
               type="submit" 
               [disabled]="loading"
               class="w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
-              <span *ngIf="!loading">Join Group</span>
+              <span *ngIf="!loading">Submit</span>
               <span *ngIf="loading">Processing...</span>
             </button>
           </form>
@@ -210,11 +222,23 @@
               <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Group Name</label>
               <input 
                 type="text" 
-                formControlName="name" 
+                formControlName="group" 
                 class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
-                [ngClass]="{ 'border-red-500 border-2': createSubmitted && cf['name'].errors }">
-              <div *ngIf="createSubmitted && cf['name'].errors" class="text-red-500 text-sm mt-1">
-                <span *ngIf="cf['name'].errors['required']">Group name is required</span>
+                [ngClass]="{ 'border-red-500 border-2': createSubmitted && cf['group'].errors }">
+              <div *ngIf="createSubmitted && cf['group'].errors" class="text-red-500 text-sm mt-1">
+                <span *ngIf="cf['group'].errors['required']">Group name is required</span>
+              </div>
+            </div>
+
+            <div class="relative flex flex-col">
+              <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Room Number</label>
+              <input 
+                type="text" 
+                formControlName="roomNo" 
+                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                [ngClass]="{ 'border-red-500 border-2': createSubmitted && cf['roomNo'].errors }">
+              <div *ngIf="createSubmitted && cf['roomNo'].errors" class="text-red-500 text-sm mt-1">
+                <span *ngIf="cf['roomNo'].errors['required']">Room number is required</span>
               </div>
             </div>
             
@@ -227,7 +251,7 @@
               type="submit"
               [disabled]="loading"
               class="w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
-              <span *ngIf="!loading">Create Group</span>
+              <span *ngIf="!loading">Submit</span>
               <span *ngIf="loading">Processing...</span>
             </button>
           </form>
