@@ -50,6 +50,12 @@ func main() {
 	http.HandleFunc("/api/chores/recurring/update", middleware.CORSMiddleware(middleware.AuthMiddleware(handlers.UpdateRecurringChoreHandler)))
 	http.HandleFunc("/api/chores/recurring/delete", middleware.CORSMiddleware(middleware.AuthMiddleware(handlers.DeleteRecurringChoreHandler)))
 
+	// Pantry routes
+	http.HandleFunc("/api/pantry/add", middleware.CORSMiddleware(middleware.AuthMiddleware(handlers.AddPantryItemHandler)))
+	http.HandleFunc("/api/pantry/use", middleware.CORSMiddleware(middleware.AuthMiddleware(handlers.UsePantryItemHandler)))
+	http.HandleFunc("/api/pantry/list", middleware.CORSMiddleware(middleware.AuthMiddleware(handlers.GetPantryItemsHandler)))
+	http.HandleFunc("/api/pantry/remove/", middleware.CORSMiddleware(middleware.AuthMiddleware(handlers.DeletePantryItemHandler)))
+
 	log.Println("Server starting on port 8080...")
 	if err := http.ListenAndServe(":8080", nil); err != nil {
 		log.Fatal(err)
