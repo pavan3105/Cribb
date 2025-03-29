@@ -28,7 +28,6 @@ type AddPantryItemRequest struct {
 	GroupName      string  `json:"group_name"`
 }
 
-// AddPantryItemHandler handles adding or updating an item in the group's pantry
 // UsePantryItemRequest defines the request structure for using a pantry item
 type UsePantryItemRequest struct {
 	ItemID   string  `json:"item_id"`
@@ -183,6 +182,25 @@ func UsePantryItemHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Create history record for using an item
+	itemID, _ = primitive.ObjectIDFromHex(request.ItemID)
+	var pantryItem models.PantryItem
+	err = config.DB.Collection("pantry_items").FindOne(
+		context.Background(),
+		bson.M{"_id": itemID},
+	).Decode(&pantryItem)
+
+	if err == nil {
+		UpdatePantryHistoryForUse(
+			user.GroupID,
+			itemID,
+			pantryItem.Name,
+			userID,
+			user.Name,
+			request.Quantity,
+		)
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(response)
@@ -279,6 +297,9 @@ func AddPantryItemHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Start transaction
 	var pantryItem models.PantryItem
+	var isNewItem bool = true
+	var oldQuantity float64 = 0
+
 	err = mongo.WithSession(context.Background(), session, func(sc mongo.SessionContext) error {
 		// Check if item already exists in this group
 		existingItem := config.DB.Collection("pantry_items").FindOne(
@@ -294,6 +315,9 @@ func AddPantryItemHandler(w http.ResponseWriter, r *http.Request) {
 			if err := existingItem.Decode(&pantryItem); err != nil {
 				return err
 			}
+
+			isNewItem = false
+			oldQuantity = pantryItem.Quantity
 
 			// Update the item
 			pantryItem.Quantity = request.Quantity
@@ -364,6 +388,30 @@ func AddPantryItemHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Transaction failed: %v", err)
 		http.Error(w, "Failed to add/update pantry item", http.StatusInternalServerError)
 		return
+	}
+
+	// Create history record for adding a new item or updating an existing one
+	if isNewItem {
+		UpdatePantryHistoryForAdd(
+			group.ID,
+			pantryItem.ID,
+			pantryItem.Name,
+			userID,
+			user.Name,
+			request.Quantity,
+		)
+	} else {
+		// If quantity changed, record it as an update
+		if oldQuantity != request.Quantity {
+			UpdatePantryHistoryForAdd(
+				group.ID,
+				pantryItem.ID,
+				pantryItem.Name,
+				userID,
+				user.Name,
+				request.Quantity-oldQuantity,
+			)
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -554,6 +602,23 @@ func DeletePantryItemHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get item details before deletion for history
+	var pantryItem models.PantryItem
+	err = config.DB.Collection("pantry_items").FindOne(
+		context.Background(),
+		bson.M{"_id": itemID},
+	).Decode(&pantryItem)
+
+	var itemName string
+	var itemQuantity float64
+	var groupID primitive.ObjectID
+
+	if err == nil {
+		itemName = pantryItem.Name
+		itemQuantity = pantryItem.Quantity
+		groupID = pantryItem.GroupID
+	}
+
 	// Start a transaction
 	session, err := config.DB.Client().StartSession()
 	if err != nil {
@@ -610,6 +675,18 @@ func DeletePantryItemHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Transaction failed: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
+	}
+
+	// Create history record for removing an item
+	if itemName != "" {
+		UpdatePantryHistoryForRemove(
+			groupID,
+			itemID,
+			itemName,
+			userID,
+			user.Name,
+			itemQuantity,
+		)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
