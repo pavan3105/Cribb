@@ -8,26 +8,29 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// Instead of trying to mock the entire MongoDB infrastructure,
-// let's create a simple test DB setup that we can use for our tests
-
 // TestDB provides a simplified interface for testing database operations
 type TestDB struct {
-	Users            []models.User
-	Groups           []models.Group
-	Chores           []models.Chore
-	RecurringChores  []models.RecurringChore
-	ChoreCompletions []models.ChoreCompletion
+	Users               []models.User
+	Groups              []models.Group
+	Chores              []models.Chore
+	RecurringChores     []models.RecurringChore
+	ChoreCompletions    []models.ChoreCompletion
+	PantryItems         []models.PantryItem         // Added for pantry tests
+	PantryNotifications []models.PantryNotification // Added for pantry tests
+	PantryHistory       []models.PantryHistory      // Added for pantry tests
 }
 
 // NewTestDB creates a new test database with some initial data
 func NewTestDB() *TestDB {
 	return &TestDB{
-		Users:            []models.User{},
-		Groups:           []models.Group{},
-		Chores:           []models.Chore{},
-		RecurringChores:  []models.RecurringChore{},
-		ChoreCompletions: []models.ChoreCompletion{},
+		Users:               []models.User{},
+		Groups:              []models.Group{},
+		Chores:              []models.Chore{},
+		RecurringChores:     []models.RecurringChore{},
+		ChoreCompletions:    []models.ChoreCompletion{},
+		PantryItems:         []models.PantryItem{},
+		PantryNotifications: []models.PantryNotification{},
+		PantryHistory:       []models.PantryHistory{},
 	}
 }
 
