@@ -4,6 +4,11 @@ import { FormsModule } from '@angular/forms';
 import { ApiService } from '../services/api.service';
 import { ChoreService, Chore, RecurringChore } from '../services/chore.service';
 
+/**
+ * ChoresComponent manages household chore assignments and tracking
+ * Includes features for creating, completing, postponing and managing both
+ * one-time and recurring household chores
+ */
 @Component({
   selector: 'app-chores',
   templateUrl: './chores.component.html',
@@ -12,53 +17,62 @@ import { ChoreService, Chore, RecurringChore } from '../services/chore.service';
   imports: [CommonModule, FormsModule]
 })
 export class ChoresComponent implements OnInit {
-  // Chores data
-  chores: Chore[] = [];
-  recurringChores: RecurringChore[] = [];
+  // Core data collections
+  chores: Chore[] = [];                // All chores for the current group
+  recurringChores: RecurringChore[] = []; // Recurring chore templates
   
-  // Component state
-  loading = true;
-  error: string | null = null;
-  activeTab: 'all' | 'yours' | 'overdue' | 'completed' = 'all';
+  // UI and filtering state
+  loading = true;                      // Loading indicator
+  error: string | null = null;         // Error message display
+  activeTab: 'all' | 'yours' | 'overdue' | 'completed' = 'all'; // Current filter tab
   
-  // New chore form visibility and data
-  showNewChoreForm = false;
-  isRecurringChore = false;
+  // Create new chore UI state
+  showNewChoreForm = false;            // Controls visibility of new chore form
+  isRecurringChore = false;            // Toggle between individual and recurring chore
   
-  // New individual chore properties
+  // Form data for new individual chore
   newIndividualChore = {
-    title: '',
-    description: '',
-    assigned_to: '',
-    due_date: this.formatDate(new Date()),
-    points: 5
+    title: '',                         // Chore title/name
+    description: '',                   // Details about the chore
+    assigned_to: '',                   // User ID the chore is assigned to
+    due_date: this.formatDate(new Date()), // Default to today
+    points: 5                          // Points awarded for completion
   };
   
-  // New recurring chore properties
+  // Form data for new recurring chore
   newRecurringChore = {
-    title: '',
-    description: '',
-    frequency: 'weekly' as 'daily' | 'weekly' | 'biweekly' | 'monthly',
-    points: 5
+    title: '',                         // Recurring chore title
+    description: '',                   // Details about the recurring chore
+    frequency: 'weekly' as 'daily' | 'weekly' | 'biweekly' | 'monthly', // How often it repeats
+    points: 5                          // Points awarded for each instance
   };
   
-  // Group information
-  groupName: string = 'Apartment 101'; // We'll get this from the ApiService later
+  // Household group context
+  groupName: string = "Pantry";        // Current household name
   
-  // Available roommates to assign chores to
+  // Available household members for assignments
   availableRoommates: {id: string, name: string, username: string}[] = [];
   
   constructor(
-    private apiService: ApiService,
-    private choreService: ChoreService
+    private apiService: ApiService,     // Service for user and auth operations
+    private choreService: ChoreService  // Service for chore CRUD operations
   ) {}
   
+  /**
+   * Initialize the component by loading chores, recurring templates,
+   * and available roommates for assignments
+   */
   ngOnInit(): void {
     this.loadGroupChores();
     this.loadRecurringChores();
     this.loadRoommates();
   }
   
+  /**
+   * Helper to format JavaScript Date to YYYY-MM-DD format for form inputs
+   * @param date - Date to format
+   * @returns Formatted date string
+   */
   formatDate(date: Date): string {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -66,40 +80,29 @@ export class ChoresComponent implements OnInit {
     return `${year}-${month}-${day}`;
   }
   
+  /**
+   * Load available household members for chore assignment
+   */
   loadRoommates(): void {
-    // In a real app, you would get this from an API
-    // For now, we'll use mock data
-    const currentUser = this.apiService.getCurrentUser();
-    
-    // Mock roommates data
-    this.availableRoommates = [
-      { 
-        id: '12345', 
-        name: 'John Doe', 
-        username: 'john_doe' 
+    this.apiService.getGroupMembers(this.groupName).subscribe({
+      next: (members) => {
+        this.availableRoommates = members.map((member: any) => ({
+          id: member._id,  // MongoDB ObjectID for the user
+          name: member.name || `${member.firstName} ${member.lastName}`,
+          username: member.username
+        }));
       },
-      { 
-        id: '67890', 
-        name: 'Jane Smith', 
-        username: 'jane_smith' 
-      },
-      { 
-        id: '45678', 
-        name: 'Robert Johnson', 
-        username: 'robert_johnson' 
+      error: (error) => {
+        console.error('Error loading group members:', error);
+        this.error = 'Failed to load group members. Please try again.';
+        setTimeout(() => this.error = null, 3000);
       }
-    ];
-    
-    // Add current user to roommates if they're logged in
-    if (currentUser) {
-      this.availableRoommates.push({
-        id: currentUser.id,
-        name: `${currentUser.firstName} ${currentUser.lastName}`,
-        username: `${currentUser.firstName.toLowerCase()}_${currentUser.lastName.toLowerCase()}`
-      });
-    }
+    });
   }
   
+  /**
+   * Load all chores for the current household group
+   */
   loadGroupChores(): void {
     this.loading = true;
     this.error = null;
@@ -117,6 +120,9 @@ export class ChoresComponent implements OnInit {
     });
   }
   
+  /**
+   * Load recurring chore templates for the current household
+   */
   loadRecurringChores(): void {
     this.choreService.getRecurringChores(this.groupName).subscribe({
       next: (recurringChores) => {
@@ -128,35 +134,48 @@ export class ChoresComponent implements OnInit {
     });
   }
   
+  /**
+   * Check if a chore has passed its due date
+   * @param chore - The chore to check
+   */
   isOverdue(chore: Chore): boolean {
     return chore.status === 'overdue';
   }
   
+  /**
+   * Determine if the current user is assigned to a chore
+   * @param chore - The chore to check
+   * @returns True if the current user is assigned to this chore
+   */
   isYourTurn(chore: Chore): boolean {
     const currentUser = this.apiService.getCurrentUser();
     if (!currentUser) return false;
+
+    // First check the assigned_to field with user ID
+    if (chore.assigned_to === currentUser.id) return true;
+
+    // If not found by ID, try to find by username
+    const roommate = this.availableRoommates.find(r => r.id === chore.assigned_to);
+    if (roommate) {
+      return roommate.id === currentUser.id;
+    }
     
-    const username = `${currentUser.firstName.toLowerCase()}_${currentUser.lastName.toLowerCase()}`;
-    return chore.assigned_to === username;
+    return false;
   }
   
+  /**
+   * Mark a chore as completed and earn points
+   * @param choreId - ID of the chore to complete
+   */
   completeChore(choreId: string): void {
     const currentUser = this.apiService.getCurrentUser();
     if (!currentUser) return;
     
-    const username = `${currentUser.firstName.toLowerCase()}_${currentUser.lastName.toLowerCase()}`;
-    
-    this.choreService.completeChore(choreId, username).subscribe({
+    this.choreService.completeChore(choreId, currentUser.id).subscribe({
       next: (response) => {
-        // Update local state
-        const chore = this.chores.find(c => c.id === choreId);
-        if (chore) {
-          chore.status = 'completed';
-        }
-        
         console.log(`Chore completed! Earned ${response.points_earned} points. New score: ${response.new_score}`);
-        
-        // In a real app, you might want to show a success notification
+        // Reload chores to get updated list after completion
+        this.loadGroupChores();
       },
       error: (error) => {
         console.error('Error completing chore:', error);
@@ -166,23 +185,27 @@ export class ChoresComponent implements OnInit {
     });
   }
   
+  /**
+   * Postpone a chore's due date by 2 days
+   * @param choreId - ID of the chore to postpone
+   */
   postponeChore(choreId: string): void {
-    // Find the chore
+    // Find the chore in the local collection
     const chore = this.chores.find(c => c.id === choreId);
     if (!chore) return;
     
-    // Calculate new due date (postpone by 2 days)
+    // Calculate new due date (2 days later)
     const currentDueDate = new Date(chore.due_date);
     currentDueDate.setDate(currentDueDate.getDate() + 2);
     const newDueDate = currentDueDate.toISOString();
     
-    // Update the chore
+    // Update the chore due date
     this.choreService.updateChore({
       chore_id: choreId,
       due_date: newDueDate
     }).subscribe({
       next: (updatedChore) => {
-        // Update local state
+        // Update the local chore in the collection
         const index = this.chores.findIndex(c => c.id === choreId);
         if (index !== -1) {
           this.chores[index] = updatedChore;
@@ -190,7 +213,6 @@ export class ChoresComponent implements OnInit {
         
         console.log('Chore postponed successfully!');
         
-        // In a real app, you might want to show a success notification
       },
       error: (error) => {
         console.error('Error postponing chore:', error);
@@ -200,6 +222,9 @@ export class ChoresComponent implements OnInit {
     });
   }
   
+  /**
+   * Create a new chore based on form type selection (individual or recurring)
+   */
   createNewChore(): void {
     if (this.isRecurringChore) {
       this.createRecurringChore();
@@ -208,6 +233,9 @@ export class ChoresComponent implements OnInit {
     }
   }
   
+  /**
+   * Create a new one-time individual chore
+   */
   createIndividualChore(): void {
     if (!this.newIndividualChore.title || !this.newIndividualChore.assigned_to) {
       this.error = "Please fill in all required fields.";
@@ -226,10 +254,10 @@ export class ChoresComponent implements OnInit {
     
     this.choreService.createIndividualChore(choreData).subscribe({
       next: (newChore) => {
-        // Add the new chore to the list
+        // Add the new chore to the local collection
         this.chores.unshift(newChore);
         
-        // Reset the form
+        // Reset the form after successful creation
         this.resetChoreForm();
         
         console.log('Individual chore created successfully!');
@@ -242,6 +270,9 @@ export class ChoresComponent implements OnInit {
     });
   }
   
+  /**
+   * Create a new recurring chore template
+   */
   createRecurringChore(): void {
     if (!this.newRecurringChore.title) {
       this.error = "Please provide a title for the recurring chore.";
@@ -249,7 +280,7 @@ export class ChoresComponent implements OnInit {
       return;
     }
     
-    // Show loading indicator
+    // Show loading indicator during creation
     this.loading = true;
     
     const choreData = {
@@ -264,17 +295,16 @@ export class ChoresComponent implements OnInit {
       next: (newRecurringChore) => {
         console.log('Recurring chore created successfully!');
         
-        // Add the new recurring chore to the list
+        // Add the recurring template to the collection
         this.recurringChores.unshift(newRecurringChore);
         
-        // Also create a chore instance for this recurring chore
-        // This ensures it shows up in the list immediately without requiring a reload
+        // Create a temporary chore instance for immediate UI feedback
         const currentUser = this.apiService.getCurrentUser();
         const username = currentUser ? 
           `${currentUser.firstName.toLowerCase()}_${currentUser.lastName.toLowerCase()}` : 
           (this.availableRoommates.length > 0 ? this.availableRoommates[0].username : 'john_doe');
         
-        // Create a new chore instance that will show up in the list
+        // Create temporary chore instance with UI-only ID
         const newChoreInstance: any = {
           id: 'chore' + Date.now(),
           title: newRecurringChore.title,
@@ -288,12 +318,15 @@ export class ChoresComponent implements OnInit {
           recurring_id: newRecurringChore.id
         };
         
-        // Add this new instance to the chores array so it appears immediately
+        // Add temporary instance to local collection for immediate display
         this.chores.unshift(newChoreInstance);
         
-        // Reset the form and hide loading indicator
+        // Reset UI state
         this.resetChoreForm();
         this.loading = false;
+        
+        // Get the actual server-created instances
+        this.reloadChores();
       },
       error: (error) => {
         this.loading = false;
@@ -304,11 +337,14 @@ export class ChoresComponent implements OnInit {
     });
   }
   
+  /**
+   * Reload all chores from the server to update the list
+   */
   reloadChores(): void {
-    // Clear current chores first
+    // Clear current chores collection
     this.chores = [];
     
-    // Then load the updated list
+    // Load the updated collection from server
     this.choreService.getGroupChores(this.groupName).subscribe({
       next: (chores) => {
         this.chores = chores;
@@ -323,10 +359,14 @@ export class ChoresComponent implements OnInit {
     });
   }
   
+  /**
+   * Delete a chore from the system
+   * @param choreId - ID of the chore to delete
+   */
   deleteChore(choreId: string): void {
     this.choreService.deleteChore(choreId).subscribe({
       next: () => {
-        // Remove the chore from the list
+        // Remove the deleted chore from local collection
         this.chores = this.chores.filter(c => c.id !== choreId);
         console.log('Chore deleted successfully!');
       },
@@ -338,6 +378,9 @@ export class ChoresComponent implements OnInit {
     });
   }
   
+  /**
+   * Toggle visibility of the new chore form
+   */
   toggleNewChoreForm(): void {
     this.showNewChoreForm = !this.showNewChoreForm;
     if (!this.showNewChoreForm) {
@@ -345,6 +388,9 @@ export class ChoresComponent implements OnInit {
     }
   }
   
+  /**
+   * Reset all chore form fields to default values
+   */
   resetChoreForm(): void {
     this.newIndividualChore = {
       title: '',
@@ -365,23 +411,50 @@ export class ChoresComponent implements OnInit {
     this.showNewChoreForm = false;
   }
   
-  getUserDisplayName(username: string): string {
-    const roommate = this.availableRoommates.find(r => r.username === username);
-    return roommate ? roommate.name : username;
+  /**
+   * Get a user's display name from their ID or username
+   * @param userIdOrUsername - The user ID or username to look up
+   * @returns Human-readable name for display
+   */
+  getUserDisplayName(userIdOrUsername: string): string {
+    // First check if we have the assignee name directly from the backend
+    const chore = this.chores.find(c => c.assigned_to === userIdOrUsername);
+    if (chore?.assignee_name) {
+      return chore.assignee_name;
+    }
+
+    // If not found by username or no assignee_name, try to find by ID
+    let roommate = this.availableRoommates.find(r => r.id === userIdOrUsername);
+    if (roommate) {
+      return roommate.name;
+    }
+    
+    // If still not found, try to find by username in availableRoommates
+    roommate = this.availableRoommates.find(r => r.username === userIdOrUsername);
+    if (roommate) {
+      return roommate.name;
+    }
+    
+    // If all lookups fail, return the original value
+    return userIdOrUsername;
   }
   
+  /**
+   * Change the active tab filter for chores display
+   * @param tab - Filter tab to activate
+   */
   setActiveTab(tab: 'all' | 'yours' | 'overdue' | 'completed'): void {
     this.activeTab = tab;
   }
   
+  /**
+   * Filter chores based on the currently active tab
+   * Used in template to determine which chores to display
+   */
   get filteredChores(): Chore[] {
-    const currentUser = this.apiService.getCurrentUser();
-    const username = currentUser ? 
-      `${currentUser.firstName.toLowerCase()}_${currentUser.lastName.toLowerCase()}` : '';
-    
     switch (this.activeTab) {
       case 'yours':
-        return this.chores.filter(chore => chore.assigned_to === username);
+        return this.chores.filter(chore => this.isYourTurn(chore));
       case 'overdue':
         return this.chores.filter(chore => chore.status === 'overdue');
       case 'completed':
@@ -391,6 +464,11 @@ export class ChoresComponent implements OnInit {
     }
   }
   
+  /**
+   * Convert recurring frequency value to human-readable label
+   * @param frequency - The frequency value from the API
+   * @returns Human-readable frequency label
+   */
   getRecurringFrequencyLabel(frequency: string): string {
     switch (frequency) {
       case 'daily': return 'Daily';
