@@ -77,7 +77,7 @@ export class PantryComponent implements OnInit {
       // Try to get group name from different possible properties
       // This handles different user object structures
       if (userData.groupName) {
-        this.groupName = userData.group_name;
+        this.groupName = userData.groupName;
         this.loadAllPantryItems();
       } else if (userData.group) {
         this.groupName = userData.group;
