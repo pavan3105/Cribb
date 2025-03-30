@@ -1,48 +1,61 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { NavbarComponent } from '../navbar/navbar.component';
 import { ApiService } from '../services/api.service';
-import { ChoresComponent } from '../chores/chores.component';
 
+/**
+ * DashboardComponent serves as the main layout for authenticated users
+ * Provides navigation, sidebar, and content area for child feature components
+ */
 @Component({
   selector: 'app-dashboard',
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css',
   standalone: true,
-  imports: [CommonModule, NavbarComponent, ChoresComponent]
+  imports: [CommonModule, RouterModule, NavbarComponent]
 })
 export class DashboardComponent implements OnInit {
-  isDrawerOpen = true;
-  user: any = null;
-  loading = true;
-  error: string | null = null;
+  // UI state
+  isDrawerOpen = true;          // Controls sidebar visibility state
+  
+  // Data state
+  user: any = null;             // Stores the current user profile data
+  loading = true;               // Loading state indicator
+  error: string | null = null;  // Error message if data fails to load
   
   constructor(
-    private apiService: ApiService,
-    private router: Router
+    private apiService: ApiService,  // Service for API and authentication
+    private router: Router           // Angular router for navigation
   ) {}
   
+  /**
+   * Initialize the dashboard by checking authentication
+   * and loading user profile data
+   */
   ngOnInit(): void {
-    // Check if user is logged in
+    // Verify user authentication status before proceeding
     if (!this.apiService.isLoggedIn()) {
       this.router.navigate(['/login']);
       return;
     }
     
-    // Load user profile data
+    // Fetch the current user's profile data
     this.apiService.getUserProfile().subscribe({
       next: (userData) => {
+        // Store user data and mark loading as complete
         this.user = userData;
         this.loading = false;
       },
       error: (error) => {
         console.error('Error loading dashboard data:', error);
-        // If the error is due to authentication, redirect to login
+        
+        // Handle authentication errors by redirecting to login
         if (error.message === 'User not authenticated') {
-          this.apiService.logout(); // Clear any stale tokens
+          this.apiService.logout(); // Clean up any invalid tokens
           this.router.navigate(['/login']);
         } else {
+          // Handle other types of errors with a message
           this.error = 'Failed to load user data. Please try again.';
         }
         this.loading = false;
@@ -50,6 +63,9 @@ export class DashboardComponent implements OnInit {
     });
   }
   
+  /**
+   * Toggle the sidebar/drawer open and closed state
+   */
   toggleDrawer(): void {
     this.isDrawerOpen = !this.isDrawerOpen;
   }
