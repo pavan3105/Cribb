@@ -229,6 +229,7 @@ type UserData struct {
 	Phone      string `json:"phone"`
 	RoomNumber string `json:"roomNo"`
 	GroupCode  string `json:"groupCode,omitempty"`
+	GroupName  string `json:"groupName,omitempty"`
 }
 
 type LoginResponse struct {
@@ -341,7 +342,7 @@ func GetUserProfileHandler(w http.ResponseWriter, r *http.Request) {
 	).Decode(&user)
 
 	if err != nil {
-		if err == mongo.ErrNoDocuments {
+		if errors.Is(err, mongo.ErrNoDocuments) {
 			http.Error(w, "User not found", http.StatusNotFound)
 			return
 		}
@@ -357,7 +358,7 @@ func GetUserProfileHandler(w http.ResponseWriter, r *http.Request) {
 		lastName = strings.Join(nameParts[1:], " ")
 	}
 
-	// Prepare response
+	// Prepare response with group name included
 	response := UserData{
 		ID:         user.ID.Hex(),
 		Email:      user.Username,
@@ -366,6 +367,7 @@ func GetUserProfileHandler(w http.ResponseWriter, r *http.Request) {
 		Phone:      user.PhoneNumber,
 		RoomNumber: user.RoomNumber,
 		GroupCode:  user.GroupCode,
+		GroupName:  user.Group, // Add the existing group name field
 	}
 
 	// Return response
