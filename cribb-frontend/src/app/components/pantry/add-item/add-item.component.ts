@@ -53,9 +53,7 @@ export class AddItemComponent implements OnInit {
       // Try to get group name from different user object structures
       if (userData.groupName) {
         this.groupName = userData.groupName;
-      } else if (userData.group) {
-        this.groupName = userData.group;
-      } else if (userData.groupCode) {
+      }else if (userData.groupCode) {
         // Fallback for testing
         this.groupName = 'Pantry';
         console.log('Using test group name in AddItemComponent');

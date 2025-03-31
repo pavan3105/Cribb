@@ -86,6 +86,9 @@ export class ChoreService {
     }
 
     const currentUser = this.apiService.getCurrentUser();
+    if (!currentUser) {
+      return throwError(() => new Error('User not authenticated'));
+    }
     const username = `${currentUser.firstName.toLowerCase()}_${currentUser.lastName.toLowerCase()}`;
     const headers = this.apiService.getAuthHeaders();
     return this.http.get<Chore[]>(`${this.baseUrl}/user?username=${username}`, { headers });

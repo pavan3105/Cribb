@@ -78,11 +78,8 @@ export class PantryComponent implements OnInit {
       // This handles different user object structures
       if (userData.groupName) {
         this.groupName = userData.groupName;
-        this.loadAllPantryItems();
-      } else if (userData.group) {
-        this.groupName = userData.group;
-        this.loadAllPantryItems();
-      } else if (userData.groupCode) {
+        this.loadAllPantryItems();}
+        else if (userData.groupCode) {
         // Fallback if we only have a group code
         this.groupName = 'Pantry'; 
         console.log('Using test group name. Consider implementing a getGroupDetails API call');
