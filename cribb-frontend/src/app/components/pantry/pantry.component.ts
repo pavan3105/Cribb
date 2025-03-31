@@ -21,6 +21,8 @@ export class PantryComponent implements OnInit {
   // Main items collections 
   pantryItems: PantryItem[] = [];          // All pantry items
   filteredItems: PantryItem[] = [];        // Items filtered by current category selection
+  totalItems: number = 0;                // Total number of items in the pantry
+  expiredItems: number = 0;                // Total number of items in the pantry
   
   // Filter state
   selectedCategory: string = '';           // Currently selected category filter
@@ -126,6 +128,8 @@ export class PantryComponent implements OnInit {
           this.filterItems();
           
           this.loading = false;
+          this.totalItems = this.getTotalItemCount()
+          this.expiredItems = this.getExpiringItemCount()
         },
         error: (err) => {
           this.error = 'Failed to load pantry items';
