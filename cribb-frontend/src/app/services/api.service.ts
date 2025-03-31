@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
-import { Observable, throwError, of } from 'rxjs';
+import { Observable, throwError, of, BehaviorSubject } from 'rxjs';
 import { catchError, tap, delay } from 'rxjs/operators';
+import { User } from '../models/user.model';
 
 @Injectable({
   providedIn: 'root'
@@ -10,7 +11,19 @@ export class ApiService {
   private baseUrl = 'http://localhost:8080'; // Updated based on API documentation
   private isSimulatedMode = false; // Set to false to use actual API
 
-  constructor(private http: HttpClient) { }
+  // BehaviorSubject to track current user state
+  private currentUserSubject: BehaviorSubject<User | null>;
+  // Public observable that components can subscribe to
+  public currentUser$: Observable<User | null>;
+
+  constructor(private http: HttpClient) {
+    // Initialize the BehaviorSubject with user data from localStorage (if available)
+    const storedUserData = localStorage.getItem('user_data');
+    this.currentUserSubject = new BehaviorSubject<User | null>(
+      storedUserData ? JSON.parse(storedUserData) : null
+    );
+    this.currentUser$ = this.currentUserSubject.asObservable();
+  }
 
   // Authentication related API calls
   login(username: string, password: string): Observable<any> {
@@ -18,7 +31,7 @@ export class ApiService {
       // Simulate successful login response
       console.log('Simulating login for:', username);
       
-      // Create mock response
+      // Create mock response with all required User properties
       const mockResponse = {
         success: true,
         token: 'simulated-jwt-token-' + Math.random().toString(36).substring(2),
@@ -27,8 +40,11 @@ export class ApiService {
           email: username,
           firstName: 'John',
           lastName: 'Doe',
-          phone: '1234567890'
-        },
+          phone: '1234567890',
+          roomNo: '101',     // Added missing required property
+          groupName: 'Pantry', // Providing common properties for completeness
+          groupCode: 'ABC123'
+        } as User, // Cast as User to ensure type compatibility
         message: 'Login successful'
       };
       
@@ -39,6 +55,10 @@ export class ApiService {
           // Store token in localStorage
           localStorage.setItem('auth_token', response.token);
           localStorage.setItem('user_data', JSON.stringify(response.user));
+          
+          // Update the BehaviorSubject with the new user data
+          this.currentUserSubject.next(response.user);
+          
           console.log('Login successful (simulated):', response);
         })
       );
@@ -52,7 +72,15 @@ export class ApiService {
           if (response && response.token) {
             localStorage.setItem('auth_token', response.token);
             if (response.user) {
-              localStorage.setItem('user_data', JSON.stringify(response.user));
+              // Ensure the user object conforms to our User interface
+              const user: User = {
+                ...response.user,
+                // Set default values for any potentially missing required properties
+                roomNo: response.user.roomNo || response.user.room_number || ''
+              };
+              localStorage.setItem('user_data', JSON.stringify(user));
+              // Update the BehaviorSubject with the properly formatted user data
+              this.currentUserSubject.next(user);
             }
           }
         }),
@@ -65,7 +93,7 @@ export class ApiService {
     password: string;
     name: string;
     phone_number: string;
-    room_number: string;  // Changed from roomNo to room_number
+    room_number: string;
     group?: string;
     groupCode?: string;
   }): Observable<any> {
@@ -73,13 +101,20 @@ export class ApiService {
       // Simulate successful registration
       console.log('Simulating registration for:', userData.username);
       
-      // Create mock response
+      // Create mock response with properties mapped to the required User fields
       const mockResponse = {
         success: true,
         token: 'simulated-jwt-token-' + Math.random().toString(36).substring(2),
         user: {
           id: 'user-' + Math.random().toString(36).substring(2),
-          ...userData,
+          email: userData.username,
+          firstName: userData.name.split(' ')[0],
+          lastName: userData.name.split(' ')[1] || '',
+          phone: userData.phone_number,
+          roomNo: userData.room_number,
+          group: userData.group,
+          groupCode: userData.groupCode,
+          password: userData.password
         },
         message: 'Registration successful'
       };
@@ -90,6 +125,10 @@ export class ApiService {
           // Store token in localStorage
           localStorage.setItem('auth_token', response.token);
           localStorage.setItem('user_data', JSON.stringify(response.user));
+          
+          // Update the BehaviorSubject with the new user data
+          this.currentUserSubject.next(response.user);
+          
           console.log('Registration successful (simulated):', response);
         })
       );
@@ -103,6 +142,8 @@ export class ApiService {
             localStorage.setItem('auth_token', response.token);
             if (response.user) {
               localStorage.setItem('user_data', JSON.stringify(response.user));
+              // Update the BehaviorSubject with the new user data
+              this.currentUserSubject.next(response.user);
             }
           }
         }),
@@ -113,18 +154,19 @@ export class ApiService {
   logout(): void {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('user_data');
+    // Update the BehaviorSubject with null to indicate no user is logged in
+    this.currentUserSubject.next(null);
     console.log('User logged out');
   }
 
   // Check if user is logged in
   isLoggedIn(): boolean {
-    return !!localStorage.getItem('auth_token');
+    return !!this.currentUserSubject.value;
   }
 
   // Get current user data
-  getCurrentUser(): any {
-    const userData = localStorage.getItem('user_data');
-    return userData ? JSON.parse(userData) : null;
+  getCurrentUser(): User | null {
+    return this.currentUserSubject.value;
   }
 
   // Get auth token
@@ -145,7 +187,7 @@ export class ApiService {
   }
 
   // User profile related API calls
-  getUserProfile(): Observable<any> {
+  getUserProfile(): Observable<User> {
     if (this.isSimulatedMode) {
       const userData = this.getCurrentUser();
       
@@ -157,17 +199,29 @@ export class ApiService {
         ...userData,
         createdAt: new Date().toISOString(),
         lastLogin: new Date().toISOString(),
-        aptNo: userData.aptNo || '101',
+        aptNo: userData.roomNo || '101',
         groupId: userData.groupId || 'group-123',
       };
       
-      return of(mockProfile).pipe(delay(800));
+      return of(mockProfile).pipe(
+        delay(800),
+        tap(profile => {
+          // Update local storage and BehaviorSubject with fresh profile data
+          localStorage.setItem('user_data', JSON.stringify(profile));
+          this.currentUserSubject.next(profile);
+        })
+      );
     }
     
     try {
       const headers = this.getAuthHeaders();
-      return this.http.get<any>(`${this.baseUrl}/api/users/profile`, { headers })
+      return this.http.get<User>(`${this.baseUrl}/api/users/profile`, { headers })
         .pipe(
+          tap(profile => {
+            // Update local storage and BehaviorSubject with fresh profile data
+            localStorage.setItem('user_data', JSON.stringify(profile));
+            this.currentUserSubject.next(profile);
+          }),
           catchError(this.handleError)
         );
     } catch (error) {
@@ -196,14 +250,18 @@ export class ApiService {
       const updatedUser = {
         ...currentUser,
         groupId: mockGroup.id,
+        groupName: group_name
       };
       
       localStorage.setItem('user_data', JSON.stringify(updatedUser));
+      // Update the BehaviorSubject with updated user data
+      this.currentUserSubject.next(updatedUser);
       
       return of({
         success: true,
         group: mockGroup,
-        message: 'Successfully joined group'
+        message: 'Successfully joined group',
+        user: updatedUser
       }).pipe(delay(1000));
     }
     
@@ -213,6 +271,27 @@ export class ApiService {
       group_name 
     }, { headers })
       .pipe(
+        tap(response => {
+          if (response && response.success) {
+            // If the API returns updated user data, use it to update the state
+            if (response.user) {
+              localStorage.setItem('user_data', JSON.stringify(response.user));
+              this.currentUserSubject.next(response.user);
+            } 
+            // Otherwise update the existing user with the new group info
+            else {
+              const currentUser = this.getCurrentUser();
+              if (currentUser) {
+                const updatedUser = {
+                  ...currentUser,
+                  groupName: group_name
+                };
+                localStorage.setItem('user_data', JSON.stringify(updatedUser));
+                this.currentUserSubject.next(updatedUser);
+              }
+            }
+          }
+        }),
         catchError(this.handleError)
       );
   }
