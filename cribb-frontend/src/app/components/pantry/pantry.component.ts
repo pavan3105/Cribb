@@ -38,6 +38,7 @@ export class PantryComponent implements OnInit {
   groupName: string = '';                  // Current household/group name
   itemToUpdate: PantryItem | null = null;  // Item being updated (if any)
   newQuantity: number = 0;                 // New quantity for item updates
+  newExpiryDate: string = '';              // New expiry date for item updates
 
   constructor(
     private pantryService: PantryService,  // Service for pantry CRUD operations
@@ -289,6 +290,14 @@ export class PantryComponent implements OnInit {
   onUpdateQuantity(item: PantryItem): void {
     this.itemToUpdate = item;
     this.newQuantity = item.quantity;
+    
+    // Format the expiry date for the date input (YYYY-MM-DD format)
+    if (item.expiration_date) {
+      const date = new Date(item.expiration_date);
+      this.newExpiryDate = date.toISOString().split('T')[0];
+    } else {
+      this.newExpiryDate = '';
+    }
   }
 
   /**
@@ -299,11 +308,19 @@ export class PantryComponent implements OnInit {
   }
 
   /**
-   * Save quantity updates for the current item
+   * Save both quantity and expiry date updates for the current item
    */
-  saveQuantityUpdate(): void {
+  saveItemUpdate(): void {
     if (!this.itemToUpdate || this.newQuantity < 0) {
       return;
+    }
+
+    // Format expiry date in ISO 8601/RFC3339 format
+    let formattedExpiryDate: string | undefined = undefined;
+    if (this.newExpiryDate) {
+      // Convert YYYY-MM-DD to YYYY-MM-DDTHH:MM:SSZ format
+      // We'll set it to end of day (23:59:59) in UTC
+      formattedExpiryDate = `${this.newExpiryDate}T23:59:59Z`;
     }
 
     // Use the existing addItem endpoint to update the item
@@ -312,16 +329,25 @@ export class PantryComponent implements OnInit {
       quantity: this.newQuantity,
       unit: this.itemToUpdate.unit,
       category: this.itemToUpdate.category,
-      group_name: this.groupName
+      group_name: this.groupName,
+      expiration_date: formattedExpiryDate
     }).subscribe({
       next: () => {
         this.loadAllPantryItems(); // Refresh the pantry list
         this.itemToUpdate = null;  // Exit update mode
       },
       error: (err) => {
-        this.error = 'Failed to update item quantity';
-        console.error('Error updating item quantity:', err);
+        this.error = 'Failed to update item';
+        console.error('Error updating item:', err);
       }
     });
   }
-} 
+
+  /**
+   * Legacy method - replaced by saveItemUpdate
+   * @deprecated Use saveItemUpdate instead
+   */
+  saveQuantityUpdate(): void {
+    this.saveItemUpdate();
+  }
+}
