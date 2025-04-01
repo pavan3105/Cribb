@@ -16,6 +16,9 @@ export class ApiService {
   // Public observable that components can subscribe to
   public currentUser$: Observable<User | null>;
 
+  private userSubject = new BehaviorSubject<any>(null); // Shared user state
+  user$ = this.userSubject.asObservable(); // Observable for user data
+
   constructor(private http: HttpClient) {
     // Initialize the BehaviorSubject with user data from localStorage (if available)
     const storedUserData = localStorage.getItem('user_data');
@@ -390,6 +393,14 @@ export class ApiService {
       .pipe(
         catchError(this.handleError)
       );
+  }
+
+  setUser(user: any): void {
+    this.userSubject.next(user); // Update shared user state
+  }
+
+  getUser(): any {
+    return this.userSubject.value; // Get current user value
   }
 
   // Generic error handler
