@@ -6,8 +6,9 @@
             <p><strong>Name:</strong> {{ user?.firstName }} {{ user?.lastName }}</p>
             <p><strong>Email:</strong> {{ user?.email }}</p>
             <p><strong>Phone:</strong> {{ user?.phone }}</p>
-            <p><strong>Apartment:</strong> {{ user?.aptNo || 'Not set' }}</p>
+            <p><strong>Room Number:</strong> {{ user?.roomNo || 'Not set' }}</p>
             <p *ngIf="user?.groupId"><strong>Group ID:</strong> {{ user?.groupId }}</p>
+            <p *ngIf="user?.groupName"><strong>Group Name:</strong> {{ user?.groupName }}</p>
         </div>
         <div class="mt-6 text-center">
             <button class="bg-blue-400 hover:bg-gray-900 text-white font-semibold py-4 px-8 rounded-xl 
