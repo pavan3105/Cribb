@@ -87,6 +87,7 @@ export class AddItemComponent implements OnInit {
       // Format expiration date in ISO 8601 format for API
       if (itemData.expiration_date) {
         const date = new Date(itemData.expiration_date);
+        date.setHours(23, 59, 59, 999);
         itemData.expiration_date = date.toISOString();
       }
 
