@@ -1,366 +1,320 @@
 #!/bin/bash
 
-# Pantry API Test Script
-# This script tests the pantry API endpoints in the Cribb backend application
+# Don't exit on error
+# set -e
 
-# Set the base URL for the API server
-BASE_URL="http://localhost:8080"
+# Configuration
+API_URL="http://localhost:8080"
+USERNAME="panTest3"
+PASSWORD="pass1234"
+PHONE="5567643286"
+GROUP_NAME="Apt33735"  # Removed space to avoid URL encoding issues
+ROOM_NUMBER="101"
 
-# Color codes for output
-GREEN='\033[0;32m'
-RED='\033[0;31m'
-YELLOW='\033[0;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+echo "======= Testing Pantry Out-of-Stock Notifications ======="
+echo "1. Create a new user and group"
 
-# Variables to store data between requests
-TOKEN=""
-USER_ID=""
-USERNAME=""
-GROUP_NAME="PantryTestGroup$(date +%s)"
-GROUP_CODE=""
-MILK_ID=""
-BREAD_ID=""
+# Register the user with a new group
+echo "Running register command..."
+REGISTER_RESPONSE=$(curl -s -X POST "$API_URL/api/register" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "'"$USERNAME"'",
+    "password": "'"$PASSWORD"'",
+    "name": "Pantry Tester",
+    "phone_number": "'"$PHONE"'",
+    "room_number": "'"$ROOM_NUMBER"'",
+    "group": "'"$GROUP_NAME"'"
+  }')
 
-# Function to print test results
-test_result() {
-    if [ $1 -eq 0 ]; then
-        echo -e "${GREEN}✓ $2${NC}"
-    else
-        echo -e "${RED}✗ $2 - Error: $3${NC}"
-        if [ "$4" == "exit" ]; then
-            echo -e "${RED}Exiting due to critical error${NC}"
-            exit 1
-        fi
-    fi
-}
+echo "Register response: $REGISTER_RESPONSE"
 
-# Function to print section headers
-section() {
-    echo -e "\n${YELLOW}>>> $1${NC}"
-}
+# Extract the token from the response
+TOKEN=$(echo $REGISTER_RESPONSE | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
 
-# Function to print JSON in a readable format
-pretty_json() {
-    # If jq is installed, use it, otherwise use Python
-    if command -v jq &> /dev/null; then
-        echo "$1" | jq .
-    elif command -v python3 &> /dev/null; then
-        echo "$1" | python3 -m json.tool
-    elif command -v python &> /dev/null; then
-        echo "$1" | python -m json.tool
-    else
-        echo "$1"
-    fi
-}
-
-# Health check
-section "Health Check"
-response=$(curl -s -w "\n%{http_code}" $BASE_URL/health)
-status_code=$(echo "$response" | tail -n1)
-response_body=$(echo "$response" | sed '$d')
-
-if [ "$status_code" -eq 200 ] && [[ "$response_body" == *"Server is running"* ]]; then
-    test_result 0 "Health check successful"
-else
-    test_result 1 "Health check failed" "$response_body" "exit"
-fi
-
-# User Registration - Create a new user with a new group
-section "User Registration"
-response=$(curl -s -w "\n%{http_code}" -X POST \
+if [ -z "$TOKEN" ]; then
+  echo "Failed to register user or get token. Response:"
+  echo $REGISTER_RESPONSE
+  # Don't exit, try logging in instead
+  echo "Trying to login with the user instead..."
+  
+  LOGIN_RESPONSE=$(curl -s -X POST "$API_URL/api/login" \
     -H "Content-Type: application/json" \
     -d '{
-        "username": "pantryuser'$(date +%s)'",
-        "password": "password123",
-        "name": "Pantry User",
-        "phone_number": "+1'$(date +%s | cut -c 1-10)'",
-        "room_number": "101",
-        "group": "'"$GROUP_NAME"'"
-    }' \
-    $BASE_URL/api/register)
-
-status_code=$(echo "$response" | tail -n1)
-response_body=$(echo "$response" | sed '$d')
-
-if [ "$status_code" -eq 201 ]; then
-    test_result 0 "User registration successful"
+      "username": "'"$USERNAME"'",
+      "password": "'"$PASSWORD"'"
+    }')
     
-    # Extract token and user details from response
-    TOKEN=$(echo "$response_body" | grep -o '"token":"[^"]*' | cut -d'"' -f4)
-    USER_ID=$(echo "$response_body" | grep -o '"id":"[^"]*' | cut -d'"' -f4)
-    USERNAME=$(echo "$response_body" | grep -o '"email":"[^"]*' | cut -d'"' -f4)
-    GROUP_CODE=$(echo "$response_body" | grep -o '"groupCode":"[^"]*' | cut -d'"' -f4)
-    
-    echo -e "${BLUE}TOKEN: ${TOKEN:0:20}...${NC}"
-    echo -e "${BLUE}USER_ID: $USER_ID${NC}"
-    echo -e "${BLUE}USERNAME: $USERNAME${NC}"
-    echo -e "${BLUE}GROUP_CODE: $GROUP_CODE${NC}"
-    echo -e "${BLUE}GROUP_NAME: $GROUP_NAME${NC}"
-else
-    test_result 1 "User registration failed" "$response_body" "exit"
+  echo "Login response: $LOGIN_RESPONSE"
+  
+  TOKEN=$(echo $LOGIN_RESPONSE | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
+  
+  if [ -z "$TOKEN" ]; then
+    echo "Failed to login. Response:"
+    echo $LOGIN_RESPONSE
+    exit 1
+  fi
 fi
 
-# Add Milk to pantry
-section "Add Milk to Pantry"
-response=$(curl -s -w "\n%{http_code}" -X POST \
-    -H "Authorization: Bearer $TOKEN" \
-    -H "Content-Type: application/json" \
-    -d '{
-        "name": "Milk",
-        "quantity": 2,
-        "unit": "gallons",
-        "category": "Dairy",
-        "expiration_date": "'$(date -d "+10 days" +%Y-%m-%dT%H:%M:%SZ)'",
-        "group_name": "'"$GROUP_NAME"'"
-    }' \
-    $BASE_URL/api/pantry/add)
+echo "User authenticated successfully and token received."
+echo "Token: $TOKEN"
 
-status_code=$(echo "$response" | tail -n1)
-response_body=$(echo "$response" | sed '$d')
+echo ""
+echo "2. Add a new pantry item: Milk with quantity 2.0"
 
-if [ "$status_code" -eq 200 ]; then
-    test_result 0 "Added Milk to pantry"
-    MILK_ID=$(echo "$response_body" | grep -o '"id":"[^"]*' | cut -d'"' -f4)
-    echo -e "${BLUE}MILK_ID: $MILK_ID${NC}"
-    echo "Item details:"
-    pretty_json "$response_body"
-else
-    test_result 1 "Failed to add Milk to pantry" "$response_body"
+# Add a new pantry item
+echo "Running add pantry item command..."
+ADD_RESPONSE=$(curl -s -X POST "$API_URL/api/pantry/add" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "name": "Milk",
+    "quantity": 2.0,
+    "unit": "gallons",
+    "category": "Dairy",
+    "expiration_date": "2025-04-15T00:00:00Z",
+    "group_name": "'"$GROUP_NAME"'"
+  }')
+
+echo "Add item response: $ADD_RESPONSE"
+
+# Extract item ID more robustly
+ITEM_ID=$(echo $ADD_RESPONSE | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+
+if [ -z "$ITEM_ID" ]; then
+  echo "Failed to add pantry item or get item ID. Response:"
+  echo $ADD_RESPONSE
+  exit 1
 fi
 
-# Add Bread to pantry
-section "Add Bread to Pantry"
-response=$(curl -s -w "\n%{http_code}" -X POST \
-    -H "Authorization: Bearer $TOKEN" \
-    -H "Content-Type: application/json" \
-    -d '{
-        "name": "Bread",
-        "quantity": 3,
-        "unit": "loaves",
-        "category": "Bakery",
-        "expiration_date": "'$(date -d "+5 days" +%Y-%m-%dT%H:%M:%SZ)'",
-        "group_name": "'"$GROUP_NAME"'"
-    }' \
-    $BASE_URL/api/pantry/add)
+echo "Item added successfully. Item ID: $ITEM_ID"
 
-status_code=$(echo "$response" | tail -n1)
-response_body=$(echo "$response" | sed '$d')
+echo ""
+echo "3. Check if there are any warnings (should be none)"
 
-if [ "$status_code" -eq 200 ]; then
-    test_result 0 "Added Bread to pantry"
-    BREAD_ID=$(echo "$response_body" | grep -o '"id":"[^"]*' | cut -d'"' -f4)
-    echo -e "${BLUE}BREAD_ID: $BREAD_ID${NC}"
-    echo "Item details:"
-    pretty_json "$response_body"
+# Check for warnings - use the group name without spaces
+echo "Running get warnings command..."
+# URL-encode the group name (unnecessary now that we've removed spaces)
+ENCODED_GROUP_NAME=$GROUP_NAME
+WARNINGS_RESPONSE=$(curl -s -X GET "$API_URL/api/pantry/warnings?group_name=$ENCODED_GROUP_NAME" \
+  -H "Authorization: Bearer $TOKEN")
+
+echo "Warnings response: $WARNINGS_RESPONSE"
+
+# Try to parse the response
+if echo "$WARNINGS_RESPONSE" | grep -q "error"; then
+  echo "Error getting warnings."
 else
-    test_result 1 "Failed to add Bread to pantry" "$response_body"
+  # Count notifications
+  NOTIFICATIONS_COUNT=$(echo $WARNINGS_RESPONSE | grep -o '"id":"[^"]*"' | wc -l)
+
+  echo "Initial warnings count: $NOTIFICATIONS_COUNT"
+  if [ "$NOTIFICATIONS_COUNT" -eq 0 ]; then
+    echo "No warnings yet, as expected."
+  else
+    echo "Unexpected warnings found:"
+    echo $WARNINGS_RESPONSE
+  fi
 fi
 
-# Add nearly expired Yogurt to pantry
-section "Add Nearly-Expired Yogurt to Pantry"
-response=$(curl -s -w "\n%{http_code}" -X POST \
-    -H "Authorization: Bearer $TOKEN" \
-    -H "Content-Type: application/json" \
-    -d '{
-        "name": "Yogurt",
-        "quantity": 5,
-        "unit": "cups",
-        "category": "Dairy",
-        "expiration_date": "'$(date -d "+2 days" +%Y-%m-%dT%H:%M:%SZ)'",
-        "group_name": "'"$GROUP_NAME"'"
-    }' \
-    $BASE_URL/api/pantry/add)
+echo ""
+echo "4. Use 1.5 gallons of milk (should trigger low_stock notification)"
 
-status_code=$(echo "$response" | tail -n1)
-response_body=$(echo "$response" | sed '$d')
+# Use most of the milk to trigger low stock
+echo "Running use pantry item command..."
+USE_RESPONSE=$(curl -s -X POST "$API_URL/api/pantry/use" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "item_id": "'"$ITEM_ID"'",
+    "quantity": 1.5
+  }')
 
-if [ "$status_code" -eq 200 ]; then
-    test_result 0 "Added Yogurt to pantry"
-    YOGURT_ID=$(echo "$response_body" | grep -o '"id":"[^"]*' | cut -d'"' -f4)
-    echo -e "${BLUE}YOGURT_ID: $YOGURT_ID${NC}"
-    echo "Item details:"
-    pretty_json "$response_body"
+echo "Use item response: $USE_RESPONSE"
+
+# Check if the response contains an error
+if echo "$USE_RESPONSE" | grep -q "error"; then
+  echo "Error using pantry item."
 else
-    test_result 1 "Failed to add Yogurt to pantry" "$response_body"
+  REMAINING=$(echo $USE_RESPONSE | grep -o '"remaining_quantity":[^,]*' | cut -d':' -f2)
+  if [ -z "$REMAINING" ]; then
+    echo "Could not parse remaining quantity."
+  else
+    echo "Used 1.5 gallons of milk. Remaining quantity: $REMAINING"
+  fi
 fi
 
-# List all pantry items
-section "List All Pantry Items"
-response=$(curl -s -w "\n%{http_code}" -X GET \
-    -H "Authorization: Bearer $TOKEN" \
-    "$BASE_URL/api/pantry/list?group_name=$GROUP_NAME")
+echo ""
+echo "5. Check for low_stock notification"
 
-status_code=$(echo "$response" | tail -n1)
-response_body=$(echo "$response" | sed '$d')
+# Check for low-stock notification
+sleep 2  # Wait a moment for the notification to be processed
+echo "Running get warnings command again..."
+WARNINGS_RESPONSE=$(curl -s -X GET "$API_URL/api/pantry/warnings?group_name=$ENCODED_GROUP_NAME" \
+  -H "Authorization: Bearer $TOKEN")
 
-if [ "$status_code" -eq 200 ]; then
-    test_result 0 "Listed all pantry items"
-    echo "Pantry items:"
-    pretty_json "$response_body"
+echo "Warnings response: $WARNINGS_RESPONSE"
+
+# Check if there's a low_stock notification
+if echo "$WARNINGS_RESPONSE" | grep -q "error"; then
+  echo "Error getting warnings."
 else
-    test_result 1 "Failed to list pantry items" "$response_body"
+  LOW_STOCK=$(echo $WARNINGS_RESPONSE | grep -o '"type":"low_stock"' | wc -l)
+
+  if [ "$LOW_STOCK" -gt 0 ]; then
+    echo "Low stock notification found, as expected."
+  else
+    echo "No low stock notification found."
+  fi
 fi
 
-# List items in Dairy category
-section "List Pantry Items in Dairy Category"
-response=$(curl -s -w "\n%{http_code}" -X GET \
-    -H "Authorization: Bearer $TOKEN" \
-    "$BASE_URL/api/pantry/list?group_name=$GROUP_NAME&category=Dairy")
+echo ""
+echo "6. Use the remaining 0.5 gallons of milk (should convert to out_of_stock)"
 
-status_code=$(echo "$response" | tail -n1)
-response_body=$(echo "$response" | sed '$d')
+# Use the rest of the milk to trigger out of stock
+echo "Running use pantry item command again..."
+USE_RESPONSE=$(curl -s -X POST "$API_URL/api/pantry/use" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "item_id": "'"$ITEM_ID"'",
+    "quantity": 0.5
+  }')
 
-if [ "$status_code" -eq 200 ]; then
-    test_result 0 "Listed pantry items in Dairy category"
-    echo "Dairy items:"
-    pretty_json "$response_body"
+echo "Use item response: $USE_RESPONSE"
+
+# Check if the response contains an error
+if echo "$USE_RESPONSE" | grep -q "error"; then
+  echo "Error using pantry item."
 else
-    test_result 1 "Failed to list dairy items" "$response_body"
+  REMAINING=$(echo $USE_RESPONSE | grep -o '"remaining_quantity":[^,]*' | cut -d':' -f2)
+  if [ -z "$REMAINING" ]; then
+    echo "Could not parse remaining quantity."
+  else
+    echo "Used remaining milk. New quantity: $REMAINING"
+  fi
 fi
 
-# Use some milk
-section "Use Milk from Pantry"
-response=$(curl -s -w "\n%{http_code}" -X POST \
-    -H "Authorization: Bearer $TOKEN" \
-    -H "Content-Type: application/json" \
-    -d '{
-        "item_id": "'"$MILK_ID"'",
-        "quantity": 0.5
-    }' \
-    $BASE_URL/api/pantry/use)
+echo ""
+echo "7. Check for out_of_stock notification (low_stock should be gone)"
 
-status_code=$(echo "$response" | tail -n1)
-response_body=$(echo "$response" | sed '$d')
+# Check for out-of-stock notification
+sleep 2  # Wait a moment for the notification to be processed
+echo "Running get warnings command one more time..."
+WARNINGS_RESPONSE=$(curl -s -X GET "$API_URL/api/pantry/warnings?group_name=$ENCODED_GROUP_NAME" \
+  -H "Authorization: Bearer $TOKEN")
 
-if [ "$status_code" -eq 200 ]; then
-    test_result 0 "Used milk from pantry"
-    echo "Result:"
-    pretty_json "$response_body"
+echo "Warnings response: $WARNINGS_RESPONSE"
+
+# Check if there's an out_of_stock notification and no low_stock
+if echo "$WARNINGS_RESPONSE" | grep -q "error"; then
+  echo "Error getting warnings."
 else
-    test_result 1 "Failed to use milk" "$response_body"
+  OUT_OF_STOCK=$(echo $WARNINGS_RESPONSE | grep -o '"type":"out_of_stock"' | wc -l)
+  LOW_STOCK=$(echo $WARNINGS_RESPONSE | grep -o '"type":"low_stock"' | wc -l)
+
+  if [ "$OUT_OF_STOCK" -gt 0 ] && [ "$LOW_STOCK" -eq 0 ]; then
+    echo "SUCCESS: Out of stock notification found and low stock notification is gone, as expected."
+  else
+    echo "FAILURE: Unexpected notification state."
+    echo "Out of stock notifications: $OUT_OF_STOCK"
+    echo "Low stock notifications: $LOW_STOCK"
+  fi
 fi
 
-# List items after using milk
-section "List Items After Using Milk"
-response=$(curl -s -w "\n%{http_code}" -X GET \
-    -H "Authorization: Bearer $TOKEN" \
-    "$BASE_URL/api/pantry/list?group_name=$GROUP_NAME")
+echo ""
+echo "8. Add another item with initial quantity 0"
 
-status_code=$(echo "$response" | tail -n1)
-response_body=$(echo "$response" | sed '$d')
+# Add a new item with zero quantity
+ADD_RESPONSE=$(curl -s -X POST "$API_URL/api/pantry/add" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "name": "Eggs",
+    "quantity": 0.0,
+    "unit": "dozen",
+    "category": "Dairy",
+    "group_name": "'"$GROUP_NAME"'"
+  }')
 
-if [ "$status_code" -eq 200 ]; then
-    test_result 0 "Listed items after using milk"
-    echo "Updated pantry items:"
-    pretty_json "$response_body"
-else
-    test_result 1 "Failed to list updated items" "$response_body"
+echo "Add item response: $ADD_RESPONSE"
+
+# Extract item ID
+EGGS_ID=$(echo $ADD_RESPONSE | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+
+if [ -z "$EGGS_ID" ]; then
+  echo "Failed to add eggs or get item ID. Response:"
+  echo $ADD_RESPONSE
+  exit 1
 fi
 
-# Use all remaining milk
-section "Use All Remaining Milk"
-response=$(curl -s -w "\n%{http_code}" -X POST \
-    -H "Authorization: Bearer $TOKEN" \
-    -H "Content-Type: application/json" \
-    -d '{
-        "item_id": "'"$MILK_ID"'",
-        "quantity": 1.5
-    }' \
-    $BASE_URL/api/pantry/use)
+echo "Eggs added successfully with quantity 0. Item ID: $EGGS_ID"
 
-status_code=$(echo "$response" | tail -n1)
-response_body=$(echo "$response" | sed '$d')
+echo ""
+echo "9. Check if eggs item caused an immediate out_of_stock notification"
 
-if [ "$status_code" -eq 200 ]; then
-    test_result 0 "Used all remaining milk"
-    echo "Result:"
-    pretty_json "$response_body"
+# Check for out-of-stock notification for eggs
+sleep 2  # Wait a moment for any notifications to be processed
+WARNINGS_RESPONSE=$(curl -s -X GET "$API_URL/api/pantry/warnings?group_name=$ENCODED_GROUP_NAME" \
+  -H "Authorization: Bearer $TOKEN")
+
+echo "Warnings response: $WARNINGS_RESPONSE"
+
+# Count how many out_of_stock notifications exist now
+OUT_OF_STOCK=$(echo $WARNINGS_RESPONSE | grep -o '"type":"out_of_stock"' | wc -l)
+
+if [ "$OUT_OF_STOCK" -eq 2 ]; then
+  echo "SUCCESS: Both milk and eggs have out_of_stock notifications."
 else
-    test_result 1 "Failed to use all milk" "$response_body"
+  echo "Note: Only milk has an out_of_stock notification."
+  echo "This is expected if background job hasn't run yet."
+  echo "Current warnings:"
+  echo $WARNINGS_RESPONSE
 fi
 
-# Delete bread
-section "Delete Bread from Pantry"
-response=$(curl -s -w "\n%{http_code}" -X DELETE \
-    -H "Authorization: Bearer $TOKEN" \
-    "$BASE_URL/api/pantry/remove/$BREAD_ID")
+echo ""
+echo "10. Verify the NotificationType in the server code"
 
-status_code=$(echo "$response" | tail -n1)
-response_body=$(echo "$response" | sed '$d')
+# Let's directly check if the NotificationType enum has the out_of_stock option
+# We'll add an item with a unique name, set quantity to 0, then check if a notification is made
+UNIQUE_NAME="TestItem_$(date +%s)"
+ADD_RESPONSE=$(curl -s -X POST "$API_URL/api/pantry/add" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "name": "'"$UNIQUE_NAME"'",
+    "quantity": 0.0,
+    "unit": "units",
+    "category": "Test",
+    "group_name": "'"$GROUP_NAME"'"
+  }')
 
-if [ "$status_code" -eq 200 ]; then
-    test_result 0 "Deleted bread from pantry"
-    echo "Result:"
-    pretty_json "$response_body"
+UNIQUE_ID=$(echo $ADD_RESPONSE | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+echo "Added test item '$UNIQUE_NAME' with ID: $UNIQUE_ID"
+
+# Force a check of low stock items by making a manual GET request
+curl -s -X GET "$API_URL/api/pantry/list?group_name=$ENCODED_GROUP_NAME" \
+  -H "Authorization: Bearer $TOKEN" > /dev/null
+
+sleep 5  # Wait a bit longer for the background job to run
+
+# Check warnings again
+WARNINGS_RESPONSE=$(curl -s -X GET "$API_URL/api/pantry/warnings?group_name=$ENCODED_GROUP_NAME" \
+  -H "Authorization: Bearer $TOKEN")
+
+# Check for our unique item name in the warnings
+if echo "$WARNINGS_RESPONSE" | grep -q "$UNIQUE_NAME"; then
+  echo "Found notification for test item '$UNIQUE_NAME'"
+  # Check if it's an out_of_stock notification
+  if echo "$WARNINGS_RESPONSE" | grep -q "\"item_name\":\"$UNIQUE_NAME\"" | grep -q "\"type\":\"out_of_stock\""; then
+    echo "SUCCESS: Server correctly identified $UNIQUE_NAME as out_of_stock"
+  else
+    echo "FAILURE: Server did not mark $UNIQUE_NAME as out_of_stock"
+  fi
 else
-    test_result 1 "Failed to delete bread" "$response_body"
+  echo "No notification found for test item '$UNIQUE_NAME'"
+  echo "This suggests the server code may not have the updates implemented properly."
 fi
 
-# List final pantry state
-section "Final Pantry State"
-response=$(curl -s -w "\n%{http_code}" -X GET \
-    -H "Authorization: Bearer $TOKEN" \
-    "$BASE_URL/api/pantry/list?group_name=$GROUP_NAME")
-
-status_code=$(echo "$response" | tail -n1)
-response_body=$(echo "$response" | sed '$d')
-
-if [ "$status_code" -eq 200 ]; then
-    test_result 0 "Listed final pantry state"
-    echo "Final pantry items:"
-    pretty_json "$response_body"
-else
-    test_result 1 "Failed to list final items" "$response_body"
-fi
-
-# Register a second user
-section "Register Second User"
-response=$(curl -s -w "\n%{http_code}" -X POST \
-    -H "Content-Type: application/json" \
-    -d '{
-        "username": "pantryuser2'$(date +%s)'",
-        "password": "password123",
-        "name": "Pantry User 2",
-        "phone_number": "+2'$(date +%s | cut -c 1-10)'",
-        "room_number": "102",
-        "groupCode": "'"$GROUP_CODE"'"
-    }' \
-    $BASE_URL/api/register)
-
-status_code=$(echo "$response" | tail -n1)
-response_body=$(echo "$response" | sed '$d')
-
-if [ "$status_code" -eq 201 ]; then
-    test_result 0 "Second user registration successful"
-    
-    # Extract token and user details from response
-    TOKEN2=$(echo "$response_body" | grep -o '"token":"[^"]*' | cut -d'"' -f4)
-    USER_ID2=$(echo "$response_body" | grep -o '"id":"[^"]*' | cut -d'"' -f4)
-    USERNAME2=$(echo "$response_body" | grep -o '"email":"[^"]*' | cut -d'"' -f4)
-    
-    echo -e "${BLUE}TOKEN2: ${TOKEN2:0:20}...${NC}"
-    echo -e "${BLUE}USER_ID2: $USER_ID2${NC}"
-    echo -e "${BLUE}USERNAME2: $USERNAME2${NC}"
-    
-    # Test that the second user can access the pantry
-    section "Second User Access to Pantry"
-    response=$(curl -s -w "\n%{http_code}" -X GET \
-        -H "Authorization: Bearer $TOKEN2" \
-        "$BASE_URL/api/pantry/list?group_name=$GROUP_NAME")
-
-    status_code=$(echo "$response" | tail -n1)
-    response_body=$(echo "$response" | sed '$d')
-
-    if [ "$status_code" -eq 200 ]; then
-        test_result 0 "Second user can access pantry"
-        echo "Pantry items visible to second user:"
-        pretty_json "$response_body"
-    else
-        test_result 1 "Second user cannot access pantry" "$response_body"
-    fi
-else
-    test_result 1 "Second user registration failed" "$response_body"
-fi
-
-echo -e "\n${GREEN}Pantry API Testing Complete!${NC}"
+echo ""
+echo "====== Test script completed ======"

@@ -173,6 +173,36 @@ func UsePantryItemHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
+		if newQuantity == 0 {
+			// Remove any existing low_stock notifications
+			_, err = config.DB.Collection("pantry_notifications").DeleteMany(
+				sc,
+				bson.M{
+					"item_id": pantryItem.ID,
+					"type":    models.NotificationTypeLowStock,
+				},
+			)
+			if err != nil {
+				log.Printf("Failed to delete low_stock notifications: %v", err)
+				// Continue anyway as this is not critical
+			}
+
+			// Create out_of_stock notification
+			notification := models.CreatePantryNotification(
+				pantryItem.GroupID,
+				pantryItem.ID,
+				pantryItem.Name,
+				models.NotificationTypeOutOfStock,
+				"Item is out of stock",
+			)
+
+			_, err = config.DB.Collection("pantry_notifications").InsertOne(sc, notification)
+			if err != nil {
+				log.Printf("Failed to create out_of_stock notification: %v", err)
+				// Continue anyway as this is not critical
+			}
+		}
+
 		return nil
 	})
 
