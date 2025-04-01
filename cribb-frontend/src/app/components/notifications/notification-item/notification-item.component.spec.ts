@@ -1,0 +1,142 @@
+/// <reference types="jasmine" />
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
+import { NotificationItemComponent } from './notification-item.component';
+import { Notification, NotificationType } from '../../../models/notification.model';
+
+describe('NotificationItemComponent', () => {
+  let component: NotificationItemComponent;
+  let fixture: ComponentFixture<NotificationItemComponent>;
+
+  // Mock notifications for testing
+  const mockExpiredNotification: Notification = {
+    id: '1',
+    type: NotificationType.EXPIRED,
+    message: 'Milk has expired',
+    item_name: 'Milk',
+    item_id: 'milk-123',
+    is_read: false,
+    created_at: '2023-10-12T10:30:00Z',
+    group_id: 'group1',
+    read_by: []
+  };
+
+  const mockExpiringNotification: Notification = {
+    id: '2',
+    type: NotificationType.EXPIRING,
+    message: 'Eggs are expiring soon',
+    item_name: 'Eggs',
+    item_id: 'eggs-123',
+    is_read: true,
+    created_at: '2023-10-11T09:15:00Z',
+    group_id: 'group1',
+    read_by: ['user1']
+  };
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [NotificationItemComponent]
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(NotificationItemComponent);
+    component = fixture.componentInstance;
+    // Set default notification
+    component.notification = mockExpiredNotification;
+  });
+
+  it('should create', () => {
+    fixture.detectChanges();
+    // @ts-ignore: Jasmine typing issue
+    expect(component).toBeDefined();
+  });
+
+  it('should display notification content', () => {
+    fixture.detectChanges();
+    
+    const element = fixture.nativeElement;
+    // @ts-ignore: Jasmine typing issue
+    expect(element.textContent).toContain('Milk');
+    // @ts-ignore: Jasmine typing issue
+    expect(element.textContent).toContain('Milk has expired');
+  });
+
+  it('should apply correct class based on notification type', () => {
+    // Test EXPIRED type
+    component.notification = mockExpiredNotification;
+    fixture.detectChanges();
+    // @ts-ignore: Jasmine typing issue
+    expect(component.getTypeClass()).toBe('text-red-500');
+    
+    // Test EXPIRING type
+    component.notification = mockExpiringNotification;
+    fixture.detectChanges();
+    // @ts-ignore: Jasmine typing issue
+    expect(component.getTypeClass()).toBe('text-yellow-500');
+  });
+
+  it('should format date correctly', () => {
+    fixture.detectChanges();
+    
+    const formattedDate = component.formatDate('2023-10-12T10:30:00Z');
+    const date = new Date('2023-10-12T10:30:00Z');
+    const expectedFormat = date.toLocaleDateString();
+    
+    // @ts-ignore: Jasmine typing issue
+    expect(formattedDate).toBe(expectedFormat);
+  });
+
+  it('should emit markAsRead event when the mark as read button is clicked', () => {
+    // Set up spy on output event
+    spyOn(component.markAsRead, 'emit');
+    fixture.detectChanges();
+    
+    // Find and click the mark as read button
+    const markAsReadButton = fixture.debugElement.query(By.css('button[title="Mark as read"]'));
+    markAsReadButton.triggerEventHandler('click', new MouseEvent('click'));
+    
+    // @ts-ignore: Jasmine typing issue
+    expect(component.markAsRead.emit).toHaveBeenCalledWith('1');
+  });
+
+  it('should emit delete event when the delete button is clicked', () => {
+    // Set up spy on output event
+    spyOn(component.delete, 'emit');
+    fixture.detectChanges();
+    
+    // Find and click the delete button
+    const deleteButton = fixture.debugElement.query(By.css('button[title="Delete notification"]'));
+    deleteButton.triggerEventHandler('click', new MouseEvent('click'));
+    
+    // @ts-ignore: Jasmine typing issue
+    expect(component.delete.emit).toHaveBeenCalledWith('1');
+  });
+
+  it('should stop event propagation when clicking buttons', () => {
+    fixture.detectChanges();
+    
+    // Create mock event
+    const mockEvent = new MouseEvent('click');
+    spyOn(mockEvent, 'stopPropagation');
+    
+    // Test mark as read
+    component.onMarkAsRead(mockEvent);
+    // @ts-ignore: Jasmine typing issue
+    expect(mockEvent.stopPropagation).toHaveBeenCalled();
+    
+    // Test delete
+    component.onDelete(mockEvent);
+    // @ts-ignore: Jasmine typing issue
+    expect(mockEvent.stopPropagation).toHaveBeenCalledTimes(2);
+  });
+
+  it('should hide mark as read button for read notifications', () => {
+    // Set notification as read
+    component.notification = mockExpiringNotification; // is_read = true
+    fixture.detectChanges();
+    
+    // Check that mark as read button is not present
+    const markAsReadButton = fixture.debugElement.query(By.css('button[title="Mark as read"]'));
+    // @ts-ignore: Jasmine typing issue
+    expect(markAsReadButton).toBeNull();
+  });
+}); 

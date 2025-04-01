@@ -33,5 +33,5 @@ export const routes: Routes = [
         { path: 'chores', component: ChoresComponent },       // Household chores feature
         { path: 'pantry', component: PantryComponent }        // Pantry management feature
       ]
-    }
+    },
 ];
