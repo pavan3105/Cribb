@@ -1,8 +1,10 @@
 import { Component, OnInit } from '@angular/core';
+import { Router, RouterModule } from '@angular/router';
+import { ApiService } from '../services/api.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ApiService } from '../services/api.service';
 import { ChoreService, Chore, RecurringChore } from '../services/chore.service';
+
 
 /**
  * ChoresComponent manages household chore assignments and tracking
@@ -18,6 +20,7 @@ import { ChoreService, Chore, RecurringChore } from '../services/chore.service';
 })
 export class ChoresComponent implements OnInit {
   // Core data collections
+  user: any = null;
   chores: Chore[] = [];                // All chores for the current group
   recurringChores: RecurringChore[] = []; // Recurring chore templates
   
@@ -47,15 +50,16 @@ export class ChoresComponent implements OnInit {
     points: 5                          // Points awarded for each instance
   };
   
-  // Household group context
-  groupName: string = "Pantry";        // Current household name
+  // // Household group context
+  // groupName: string = "Pantry";        // Current household name
   
   // Available household members for assignments
   availableRoommates: {id: string, name: string, username: string}[] = [];
   
   constructor(
     private apiService: ApiService,     // Service for user and auth operations
-    private choreService: ChoreService  // Service for chore CRUD operations
+    private choreService: ChoreService,  // Service for chore CRUD operations
+    private router: Router           // Angular router for navigation
   ) {}
   
   /**
@@ -63,9 +67,15 @@ export class ChoresComponent implements OnInit {
    * and available roommates for assignments
    */
   ngOnInit(): void {
-    this.loadGroupChores();
-    this.loadRecurringChores();
-    this.loadRoommates();
+    this.apiService.user$.subscribe((userData) => {
+      this.user = userData;
+      if (this.user) {
+        this.loadGroupChores();
+        this.loadRecurringChores();
+        this.loadRoommates();
+      }
+      this.loading = false;
+    });
   }
   
   /**
@@ -84,7 +94,7 @@ export class ChoresComponent implements OnInit {
    * Load available household members for chore assignment
    */
   loadRoommates(): void {
-    this.apiService.getGroupMembers(this.groupName).subscribe({
+    this.apiService.getGroupMembers(this.user.groupName).subscribe({
       next: (members) => {
         this.availableRoommates = members.map((member: any) => ({
           id: member._id,  // MongoDB ObjectID for the user
@@ -106,8 +116,8 @@ export class ChoresComponent implements OnInit {
   loadGroupChores(): void {
     this.loading = true;
     this.error = null;
-    
-    this.choreService.getGroupChores(this.groupName).subscribe({
+    console.log('Loading chores for group:', this.user.groupName);
+    this.choreService.getGroupChores(this.user.groupName).subscribe({
       next: (chores) => {
         this.chores = chores;
         this.loading = false;
@@ -124,7 +134,7 @@ export class ChoresComponent implements OnInit {
    * Load recurring chore templates for the current household
    */
   loadRecurringChores(): void {
-    this.choreService.getRecurringChores(this.groupName).subscribe({
+    this.choreService.getRecurringChores(this.user.groupName).subscribe({
       next: (recurringChores) => {
         this.recurringChores = recurringChores;
       },
@@ -242,11 +252,11 @@ export class ChoresComponent implements OnInit {
       setTimeout(() => this.error = null, 3000);
       return;
     }
-    
+    console.log(this.user.groupName)
     const choreData = {
       title: this.newIndividualChore.title,
       description: this.newIndividualChore.description,
-      group_name: this.groupName,
+      group_name: this.user.groupName,
       assigned_to: this.newIndividualChore.assigned_to,
       due_date: new Date(this.newIndividualChore.due_date).toISOString(),
       points: this.newIndividualChore.points
@@ -286,7 +296,7 @@ export class ChoresComponent implements OnInit {
     const choreData = {
       title: this.newRecurringChore.title,
       description: this.newRecurringChore.description,
-      group_name: this.groupName,
+      group_name: this.user.groupName,
       frequency: this.newRecurringChore.frequency,
       points: this.newRecurringChore.points
     };
@@ -309,7 +319,7 @@ export class ChoresComponent implements OnInit {
           id: 'chore' + Date.now(),
           title: newRecurringChore.title,
           description: newRecurringChore.description,
-          group_name: this.groupName,
+          group_name: this.user.groupName,
           assigned_to: username,
           due_date: new Date().toISOString(),
           points: newRecurringChore.points,
@@ -345,7 +355,7 @@ export class ChoresComponent implements OnInit {
     this.chores = [];
     
     // Load the updated collection from server
-    this.choreService.getGroupChores(this.groupName).subscribe({
+    this.choreService.getGroupChores(this.user.groupName).subscribe({
       next: (chores) => {
         this.chores = chores;
         this.loading = false;
