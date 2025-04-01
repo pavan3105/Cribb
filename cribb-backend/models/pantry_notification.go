@@ -18,6 +18,8 @@ const (
 
 	// NotificationTypeExpired indicates an item has expired
 	NotificationTypeExpired NotificationType = "expired"
+
+	NotificationTypeOutOfStock NotificationType = "out_of_stock"
 )
 
 // PantryNotification represents a notification about a pantry item

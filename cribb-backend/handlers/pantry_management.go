@@ -20,6 +20,7 @@ import (
 )
 
 // GetPantryWarningsHandler retrieves low-stock warnings for a group
+// GetPantryWarningsHandler retrieves low-stock warnings for a group
 func GetPantryWarningsHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -95,13 +96,18 @@ func GetPantryWarningsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Find all low-stock notifications for this group
+	// Find all low-stock and out-of-stock notifications for this group
 	opts := options.Find().SetSort(bson.D{{Key: "created_at", Value: -1}}).SetLimit(50)
 	cursor, err := config.DB.Collection("pantry_notifications").Find(
 		context.Background(),
 		bson.M{
 			"group_id": group.ID,
-			"type":     models.NotificationTypeLowStock,
+			"type": bson.M{
+				"$in": []models.NotificationType{
+					models.NotificationTypeLowStock,
+					models.NotificationTypeOutOfStock,
+				},
+			},
 		},
 		opts,
 	)
