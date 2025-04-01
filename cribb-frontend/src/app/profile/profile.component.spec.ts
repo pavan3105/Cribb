@@ -5,6 +5,7 @@ import { ApiService } from '../services/api.service';
 import { CommonModule } from '@angular/common';
 import { NavbarComponent } from '../navbar/navbar.component';
 import { provideRouter } from '@angular/router';
+import { User } from '../models/user.model';
 
 describe('ProfileComponent', () => {
   let component: ProfileComponent;
@@ -43,7 +44,18 @@ describe('ProfileComponent', () => {
   });
 
   it('should load user profile data on initialization', () => {
-    const mockUserData = { firstName: 'John', lastName: 'Doe', email: 'john.doe@example.com' };
+    // Create mock user data with all required properties from User interface
+    const mockUserData: User = {
+      id: 'user123',
+      firstName: 'John',
+      lastName: 'Doe',
+      email: 'john.doe@example.com',
+      phone: '555-123-4567',
+      roomNo: '101',
+      groupId: 'group123',
+      groupName: 'Pantry Pals'
+    };
+    
     mockApiService.isLoggedIn.and.returnValue(true);
     mockApiService.getUserProfile.and.returnValue(of(mockUserData));
 
