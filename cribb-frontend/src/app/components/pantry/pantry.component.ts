@@ -318,9 +318,10 @@ export class PantryComponent implements OnInit {
     // Format expiry date in ISO 8601/RFC3339 format
     let formattedExpiryDate: string | undefined = undefined;
     if (this.newExpiryDate) {
-      // Convert YYYY-MM-DD to YYYY-MM-DDTHH:MM:SSZ format
-      // We'll set it to end of day (23:59:59) in UTC
-      formattedExpiryDate = `${this.newExpiryDate}T23:59:59Z`;
+      // Create a date at end of day in local timezone, then convert to ISO string
+      const expiryDate = new Date(this.newExpiryDate);
+      expiryDate.setHours(23, 59, 59, 999);
+      formattedExpiryDate = expiryDate.toISOString();
     }
 
     // Use the existing addItem endpoint to update the item
