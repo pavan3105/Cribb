@@ -177,14 +177,90 @@ func checkExpiringItems() {
 
 // checkLowStockItems looks for items that are running low and creates notifications
 func checkLowStockItems() {
-	log.Println("Checking for low stock pantry items...")
+	log.Println("Checking for low stock and out of stock pantry items...")
+	now := time.Now()
 
-	// Use the database's aggregation framework to find items with low stock
-	// Consider an item "low stock" if it's at 20% or less of its typical quantity
-	// This is a simplified approach; in a real application you might want more sophisticated logic
+	// First handle out of stock items
+	cursor, err := config.DB.Collection("pantry_items").Find(
+		context.Background(),
+		bson.M{
+			"quantity": 0,
+		},
+	)
+
+	if err != nil {
+		log.Printf("Error finding out of stock items: %v", err)
+	} else {
+		defer cursor.Close(context.Background())
+
+		var outOfStockItems []models.PantryItem
+		if err = cursor.All(context.Background(), &outOfStockItems); err != nil {
+			log.Printf("Error decoding out of stock items: %v", err)
+		} else {
+			// Process each out of stock item
+			for _, item := range outOfStockItems {
+				// Check if a notification already exists for this item
+				count, err := config.DB.Collection("pantry_notifications").CountDocuments(
+					context.Background(),
+					bson.M{
+						"item_id": item.ID,
+						"type":    models.NotificationTypeOutOfStock,
+						"created_at": bson.M{
+							"$gte": now.AddDate(0, 0, -3), // Only check for notifications in the last 3 days
+						},
+					},
+				)
+
+				if err != nil {
+					log.Printf("Error checking existing notifications: %v", err)
+					continue
+				}
+
+				// If no notification exists, create one
+				if count == 0 {
+					// First delete any existing low stock notifications for this item
+					_, err := config.DB.Collection("pantry_notifications").DeleteMany(
+						context.Background(),
+						bson.M{
+							"item_id": item.ID,
+							"type":    models.NotificationTypeLowStock,
+						},
+					)
+
+					if err != nil {
+						log.Printf("Error deleting low stock notifications: %v", err)
+					}
+
+					// Then create the out of stock notification
+					notification := models.CreatePantryNotification(
+						item.GroupID,
+						item.ID,
+						item.Name,
+						models.NotificationTypeOutOfStock,
+						"Item is out of stock",
+					)
+
+					_, err = config.DB.Collection("pantry_notifications").InsertOne(
+						context.Background(),
+						notification,
+					)
+
+					if err != nil {
+						log.Printf("Error creating out of stock notification: %v", err)
+					} else {
+						log.Printf("Created out of stock notification for item: %s", item.Name)
+					}
+				}
+			}
+
+			log.Printf("Completed out of stock check, found %d items", len(outOfStockItems))
+		}
+	}
+
+	// Then handle low stock items (but exclude items with quantity 0)
 	lowStockThreshold := 1.0 // Setting a fixed threshold for simplicity
 
-	cursor, err := config.DB.Collection("pantry_items").Find(
+	cursor, err = config.DB.Collection("pantry_items").Find(
 		context.Background(),
 		bson.M{
 			"quantity": bson.M{
@@ -205,8 +281,6 @@ func checkLowStockItems() {
 		log.Printf("Error decoding low stock items: %v", err)
 		return
 	}
-
-	now := time.Now()
 
 	// Process each low stock item
 	for _, item := range lowStockItems {
