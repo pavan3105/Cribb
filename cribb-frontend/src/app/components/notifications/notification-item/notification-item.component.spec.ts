@@ -8,7 +8,7 @@ describe('NotificationItemComponent', () => {
   let component: NotificationItemComponent;
   let fixture: ComponentFixture<NotificationItemComponent>;
 
-  // Mock notifications for testing
+  // Mock notifications for testing all types
   const mockExpiredNotification: Notification = {
     id: '1',
     type: NotificationType.EXPIRED,
@@ -31,6 +31,30 @@ describe('NotificationItemComponent', () => {
     created_at: '2023-10-11T09:15:00Z',
     group_id: 'group1',
     read_by: ['user1']
+  };
+
+  const mockLowStockNotification: Notification = {
+    id: '3',
+    type: NotificationType.LOW_STOCK,
+    message: 'Bread is running low',
+    item_name: 'Bread',
+    item_id: 'bread-123',
+    is_read: false,
+    created_at: '2023-10-10T15:45:00Z',
+    group_id: 'group1',
+    read_by: []
+  };
+
+  const mockOutOfStockNotification: Notification = {
+    id: '4',
+    type: NotificationType.OUT_OF_STOCK,
+    message: 'Cheese is out of stock',
+    item_name: 'Cheese',
+    item_id: 'cheese-123',
+    is_read: false,
+    created_at: '2023-10-09T08:20:00Z',
+    group_id: 'group1',
+    read_by: []
   };
 
   beforeEach(async () => {
@@ -72,6 +96,49 @@ describe('NotificationItemComponent', () => {
     fixture.detectChanges();
     // @ts-ignore: Jasmine typing issue
     expect(component.getTypeClass()).toBe('text-yellow-500');
+    
+    // Test LOW_STOCK type
+    component.notification = mockLowStockNotification;
+    fixture.detectChanges();
+    // @ts-ignore: Jasmine typing issue
+    expect(component.getTypeClass()).toBe('text-blue-500');
+    
+    // Test OUT_OF_STOCK type
+    component.notification = mockOutOfStockNotification;
+    fixture.detectChanges();
+    // @ts-ignore: Jasmine typing issue
+    expect(component.getTypeClass()).toBe('text-orange-500');
+  });
+
+  it('should return correct icons based on notification type', () => {
+    // Test EXPIRED type
+    component.notification = mockExpiredNotification;
+    // @ts-ignore: Jasmine typing issue
+    expect(component.getTypeIcon()).toBe('exclamation-circle');
+    
+    // Test EXPIRING type
+    component.notification = mockExpiringNotification;
+    // @ts-ignore: Jasmine typing issue
+    expect(component.getTypeIcon()).toBe('clock');
+    
+    // Test LOW_STOCK type
+    component.notification = mockLowStockNotification;
+    // @ts-ignore: Jasmine typing issue
+    expect(component.getTypeIcon()).toBe('shopping-cart');
+    
+    // Test OUT_OF_STOCK type
+    component.notification = mockOutOfStockNotification;
+    // @ts-ignore: Jasmine typing issue
+    expect(component.getTypeIcon()).toBe('exclamation-triangle');
+    
+    // Test fallback case with mock notification type that doesn't exist
+    // @ts-ignore: Testing with invalid type for coverage
+    component.notification = {
+      ...mockExpiredNotification,
+      type: -1 as unknown as NotificationType // Force invalid type for testing default case
+    };
+    // @ts-ignore: Jasmine typing issue
+    expect(component.getTypeIcon()).toBe('bell');
   });
 
   it('should format date correctly', () => {
@@ -83,6 +150,55 @@ describe('NotificationItemComponent', () => {
     
     // @ts-ignore: Jasmine typing issue
     expect(formattedDate).toBe(expectedFormat);
+  });
+
+  it('should show appropriate icons for each notification type', () => {
+    // Test EXPIRED type
+    component.notification = mockExpiredNotification;
+    fixture.detectChanges();
+    // Fix the selector to not use *ngIf directly
+    const expiredIcon = fixture.debugElement.query(By.css('svg'));
+    // @ts-ignore: Jasmine typing issue
+    expect(expiredIcon).toBeTruthy();
+    
+    // Test EXPIRING type
+    component.notification = mockExpiringNotification;
+    fixture.detectChanges();
+    const expiringIcon = fixture.debugElement.query(By.css('svg'));
+    // @ts-ignore: Jasmine typing issue
+    expect(expiringIcon).toBeTruthy();
+    
+    // Test LOW_STOCK type
+    component.notification = mockLowStockNotification;
+    fixture.detectChanges();
+    const lowStockIcon = fixture.debugElement.query(By.css('svg'));
+    // @ts-ignore: Jasmine typing issue
+    expect(lowStockIcon).toBeTruthy();
+    
+    // Test OUT_OF_STOCK type
+    component.notification = mockOutOfStockNotification;
+    fixture.detectChanges();
+    const outOfStockIcon = fixture.debugElement.query(By.css('svg'));
+    // @ts-ignore: Jasmine typing issue
+    expect(outOfStockIcon).toBeTruthy();
+  });
+
+  it('should apply different background for unread notifications', () => {
+    // Test unread notification
+    component.notification = mockExpiredNotification; // is_read = false
+    fixture.detectChanges();
+    const notificationDiv = fixture.debugElement.query(By.css('.flex.items-center'));
+    // @ts-ignore: Jasmine typing issue
+    expect(notificationDiv.nativeElement.classList.contains('bg-gray-50') || 
+           notificationDiv.nativeElement.classList.contains('dark:bg-gray-700')).toBeTrue();
+    
+    // Test read notification
+    component.notification = mockExpiringNotification; // is_read = true
+    fixture.detectChanges();
+    const readNotificationDiv = fixture.debugElement.query(By.css('.flex.items-center'));
+    // @ts-ignore: Jasmine typing issue
+    expect(readNotificationDiv.nativeElement.classList.contains('bg-gray-50') || 
+           readNotificationDiv.nativeElement.classList.contains('dark:bg-gray-700')).toBeFalse();
   });
 
   it('should emit markAsRead event when the mark as read button is clicked', () => {
