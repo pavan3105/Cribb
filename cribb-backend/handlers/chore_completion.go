@@ -14,6 +14,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // CompleteChoreHandler handles the completion of a chore by a user
@@ -214,6 +215,7 @@ func CompleteChoreHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetGroupChoresHandler retrieves all active chores for a group
+// GetGroupChoresHandler retrieves all active chores for a group
 func GetGroupChoresHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -242,26 +244,14 @@ func GetGroupChoresHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get all chores for the group, excluding completed recurring chores
-	// We'll only show completed chores if they're individual chores or the most recent instance of a recurring chore
-	pipeline := mongo.Pipeline{
-		{{Key: "$match", Value: bson.M{"group_id": group.ID}}},
-		{{Key: "$sort", Value: bson.D{
-			{Key: "recurring_id", Value: 1},
-			{Key: "created_at", Value: -1},
-		}}},
-		{{Key: "$group", Value: bson.M{
-			"_id": "$recurring_id",
-			"doc": bson.M{"$first": "$$ROOT"},
-		}}},
-		{{Key: "$replaceRoot", Value: bson.M{"newRoot": "$doc"}}},
-		{{Key: "$sort", Value: bson.D{{Key: "due_date", Value: 1}}}},
-	}
-
-	cursor, err := config.DB.Collection("chores").Aggregate(
+	// Get all chores for the group, sorted by due date
+	opts := options.Find().SetSort(bson.D{{Key: "due_date", Value: 1}})
+	cursor, err := config.DB.Collection("chores").Find(
 		context.Background(),
-		pipeline,
+		bson.M{"group_id": group.ID},
+		opts,
 	)
+
 	if err != nil {
 		http.Error(w, "Failed to fetch chores", http.StatusInternalServerError)
 		return
