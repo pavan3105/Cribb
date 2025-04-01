@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@angular/cdk": "^19.2.7",
     "date-fns": "^4.1.0"
   }
 }
