@@ -45,6 +45,7 @@ export class DashboardComponent implements OnInit {
       next: (userData) => {
         // Store user data and mark loading as complete
         this.user = userData;
+        this.apiService.setUser(userData); // Share user data via ApiService
         this.loading = false;
       },
       error: (error) => {
