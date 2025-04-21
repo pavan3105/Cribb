@@ -65,6 +65,12 @@ func main() {
 	http.HandleFunc("/api/pantry/notify/read", middleware.CORSMiddleware(middleware.AuthMiddleware(handlers.MarkNotificationReadHandler)))
 	http.HandleFunc("/api/pantry/notify/delete", middleware.CORSMiddleware(middleware.AuthMiddleware(handlers.DeleteNotificationHandler)))
 
+	// Shopping cart routes - apply CORS and Auth middleware
+	http.HandleFunc("/api/shopping-cart/add", middleware.CORSMiddleware(middleware.AuthMiddleware(handlers.AddShoppingCartItemHandler)))
+	http.HandleFunc("/api/shopping-cart/update", middleware.CORSMiddleware(middleware.AuthMiddleware(handlers.UpdateShoppingCartItemHandler)))
+	http.HandleFunc("/api/shopping-cart/delete/", middleware.CORSMiddleware(middleware.AuthMiddleware(handlers.DeleteShoppingCartItemHandler)))
+	http.HandleFunc("/api/shopping-cart/list", middleware.CORSMiddleware(middleware.AuthMiddleware(handlers.ListShoppingCartItemsHandler)))
+
 	log.Println("Server starting on port 8080...")
 	if err := http.ListenAndServe(":8080", nil); err != nil {
 		log.Fatal(err)
