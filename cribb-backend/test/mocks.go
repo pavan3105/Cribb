@@ -18,6 +18,7 @@ type TestDB struct {
 	PantryItems         []models.PantryItem         // Added for pantry tests
 	PantryNotifications []models.PantryNotification // Added for pantry tests
 	PantryHistory       []models.PantryHistory      // Added for pantry tests
+	ShoppingCartItems   []models.ShoppingCartItem
 }
 
 // NewTestDB creates a new test database with some initial data
@@ -31,6 +32,7 @@ func NewTestDB() *TestDB {
 		PantryItems:         []models.PantryItem{},
 		PantryNotifications: []models.PantryNotification{},
 		PantryHistory:       []models.PantryHistory{},
+		ShoppingCartItems:   []models.ShoppingCartItem{},
 	}
 }
 
