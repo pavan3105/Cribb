@@ -1,3 +1,4 @@
+// handlers/shopping_cart.go
 package handlers
 
 import (
@@ -7,6 +8,7 @@ import (
 	"cribb-backend/models"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -19,15 +21,22 @@ import (
 
 // AddShoppingCartItemRequest defines the request structure for adding a shopping cart item
 type AddShoppingCartItemRequest struct {
-	ItemName string  `json:"item_name"`
-	Quantity float64 `json:"quantity"`
+	ItemName string  `json:"item_name" validate:"required,min=1"`
+	Quantity float64 `json:"quantity" validate:"required,min=0.1"`
 }
 
 // UpdateShoppingCartItemRequest defines the request structure for updating a shopping cart item
 type UpdateShoppingCartItemRequest struct {
-	ItemID   string  `json:"item_id"`
-	ItemName string  `json:"item_name,omitempty"`
-	Quantity float64 `json:"quantity,omitempty"`
+	ItemID   string  `json:"item_id" validate:"required"`
+	ItemName string  `json:"item_name,omitempty" validate:"min=1"`
+	Quantity float64 `json:"quantity,omitempty" validate:"min=0.1"`
+}
+
+// Response structures
+type ShoppingCartResponse struct {
+	Status  string      `json:"status"`
+	Message string      `json:"message"`
+	Data    interface{} `json:"data,omitempty"`
 }
 
 // AddShoppingCartItemHandler handles adding an item to the shopping cart
@@ -132,9 +141,37 @@ func AddShoppingCartItemHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Log the activity
+	go func() {
+		// Create activity log
+		activity := models.CreateShoppingCartActivity(
+			user.GroupID,
+			shoppingCartItem.ID,
+			shoppingCartItem.ItemName,
+			userID,
+			user.Name,
+			models.CartActivityTypeAdd,
+			shoppingCartItem.Quantity,
+			"Added item to shopping cart",
+		)
+
+		_, err := config.DB.Collection("shopping_cart_activity").InsertOne(
+			context.Background(),
+			activity,
+		)
+
+		if err != nil {
+			log.Printf("Failed to create shopping cart activity record: %v", err)
+		}
+	}()
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(shoppingCartItem)
+	json.NewEncoder(w).Encode(ShoppingCartResponse{
+		Status:  "success",
+		Message: "Item added to shopping cart",
+		Data:    shoppingCartItem,
+	})
 }
 
 // UpdateShoppingCartItemHandler handles updating an item in the shopping cart
@@ -177,6 +214,22 @@ func UpdateShoppingCartItemHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Find user to get their group
+	var user models.User
+	err = config.DB.Collection("users").FindOne(
+		context.Background(),
+		bson.M{"_id": userID},
+	).Decode(&user)
+
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			http.Error(w, "User not found", http.StatusNotFound)
+		} else {
+			http.Error(w, "Failed to fetch user", http.StatusInternalServerError)
+		}
+		return
+	}
+
 	// Verify the item belongs to the user
 	var shoppingCartItem models.ShoppingCartItem
 	err = config.DB.Collection("shopping_cart").FindOne(
@@ -214,6 +267,10 @@ func UpdateShoppingCartItemHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Record the old values for activity logging
+	oldItemName := shoppingCartItem.ItemName
+	oldQuantity := shoppingCartItem.Quantity
+
 	// Update the item
 	_, err = config.DB.Collection("shopping_cart").UpdateOne(
 		context.Background(),
@@ -239,9 +296,51 @@ func UpdateShoppingCartItemHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Log the activity
+	go func() {
+		// Create details message
+		details := "Updated item in shopping cart: "
+		changes := []string{}
+
+		if request.ItemName != "" && request.ItemName != oldItemName {
+			changes = append(changes, "name from '"+oldItemName+"' to '"+request.ItemName+"'")
+		}
+
+		if request.Quantity > 0 && request.Quantity != oldQuantity {
+			changes = append(changes, "quantity from "+fmt.Sprintf("%.2f", oldQuantity)+" to "+fmt.Sprintf("%.2f", request.Quantity))
+		}
+
+		details += strings.Join(changes, ", ")
+
+		// Create activity log
+		activity := models.CreateShoppingCartActivity(
+			user.GroupID,
+			itemID,
+			shoppingCartItem.ItemName,
+			userID,
+			user.Name,
+			models.CartActivityTypeUpdate,
+			shoppingCartItem.Quantity,
+			details,
+		)
+
+		_, err := config.DB.Collection("shopping_cart_activity").InsertOne(
+			context.Background(),
+			activity,
+		)
+
+		if err != nil {
+			log.Printf("Failed to create shopping cart activity record: %v", err)
+		}
+	}()
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(shoppingCartItem)
+	json.NewEncoder(w).Encode(ShoppingCartResponse{
+		Status:  "success",
+		Message: "Item updated in shopping cart",
+		Data:    shoppingCartItem,
+	})
 }
 
 // DeleteShoppingCartItemHandler handles deleting an item from the shopping cart
@@ -279,6 +378,41 @@ func DeleteShoppingCartItemHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Find user to get their group
+	var user models.User
+	err = config.DB.Collection("users").FindOne(
+		context.Background(),
+		bson.M{"_id": userID},
+	).Decode(&user)
+
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			http.Error(w, "User not found", http.StatusNotFound)
+		} else {
+			http.Error(w, "Failed to fetch user", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// Get the item before deletion for logging purposes
+	var shoppingCartItem models.ShoppingCartItem
+	err = config.DB.Collection("shopping_cart").FindOne(
+		context.Background(),
+		bson.M{
+			"_id":     itemID,
+			"user_id": userID,
+		},
+	).Decode(&shoppingCartItem)
+
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			http.Error(w, "Shopping cart item not found or does not belong to user", http.StatusNotFound)
+		} else {
+			http.Error(w, "Failed to fetch shopping cart item", http.StatusInternalServerError)
+		}
+		return
+	}
+
 	// Delete the item if it belongs to the user
 	result, err := config.DB.Collection("shopping_cart").DeleteOne(
 		context.Background(),
@@ -299,10 +433,35 @@ func DeleteShoppingCartItemHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Log the activity
+	go func() {
+		// Create activity log
+		activity := models.CreateShoppingCartActivity(
+			user.GroupID,
+			itemID,
+			shoppingCartItem.ItemName,
+			userID,
+			user.Name,
+			models.CartActivityTypeDelete,
+			shoppingCartItem.Quantity,
+			"Removed item from shopping cart",
+		)
+
+		_, err := config.DB.Collection("shopping_cart_activity").InsertOne(
+			context.Background(),
+			activity,
+		)
+
+		if err != nil {
+			log.Printf("Failed to create shopping cart activity record: %v", err)
+		}
+	}()
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{
-		"message": "Shopping cart item deleted successfully",
+	json.NewEncoder(w).Encode(ShoppingCartResponse{
+		Status:  "success",
+		Message: "Shopping cart item deleted successfully",
 	})
 }
 
@@ -356,6 +515,19 @@ func ListShoppingCartItemsHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Invalid filter user ID format", http.StatusBadRequest)
 			return
 		}
+
+		// Verify the filter user belongs to the same group
+		var filterUser models.User
+		err = config.DB.Collection("users").FindOne(
+			context.Background(),
+			bson.M{"_id": filterUserID},
+		).Decode(&filterUser)
+
+		if err != nil || filterUser.GroupID != user.GroupID {
+			http.Error(w, "User not found or not in your group", http.StatusForbidden)
+			return
+		}
+
 		filter["user_id"] = filterUserID
 	}
 
@@ -421,5 +593,238 @@ func ListShoppingCartItemsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(itemsWithUsers)
+	json.NewEncoder(w).Encode(ShoppingCartResponse{
+		Status:  "success",
+		Message: "Shopping cart items retrieved successfully",
+		Data:    itemsWithUsers,
+	})
+}
+
+// GetShoppingCartActivityHandler retrieves recent activity for a group's shopping cart
+func GetShoppingCartActivityHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Get user from context (set by AuthMiddleware)
+	userClaims, ok := middleware.GetUserFromContext(r.Context())
+	if !ok {
+		http.Error(w, "User not authenticated", http.StatusUnauthorized)
+		return
+	}
+
+	// Get query parameters
+	groupName := r.URL.Query().Get("group_name")
+	groupCode := r.URL.Query().Get("group_code")
+	limit := 20 // Default limit
+
+	// Need either group name or group code
+	if groupName == "" && groupCode == "" {
+		http.Error(w, "Group name or group code is required", http.StatusBadRequest)
+		return
+	}
+
+	// Get user ID
+	userID, err := primitive.ObjectIDFromHex(userClaims.ID)
+	if err != nil {
+		http.Error(w, "Invalid user ID", http.StatusBadRequest)
+		return
+	}
+
+	// Find user to get their group
+	var user models.User
+	err = config.DB.Collection("users").FindOne(
+		context.Background(),
+		bson.M{"_id": userID},
+	).Decode(&user)
+
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			http.Error(w, "User not found", http.StatusNotFound)
+		} else {
+			http.Error(w, "Failed to fetch user", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// Find the group
+	var groupFilter bson.M
+	if groupName != "" {
+		groupFilter = bson.M{"name": groupName}
+	} else {
+		groupFilter = bson.M{"group_code": groupCode}
+	}
+
+	var group models.Group
+	err = config.DB.Collection("groups").FindOne(
+		context.Background(),
+		groupFilter,
+	).Decode(&group)
+
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			http.Error(w, "Group not found", http.StatusNotFound)
+		} else {
+			http.Error(w, "Failed to fetch group", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// Verify user belongs to the group
+	if user.GroupID != group.ID {
+		http.Error(w, "User is not a member of this group", http.StatusForbidden)
+		return
+	}
+
+	// Set up options for sorting and limiting results
+	opts := options.Find().
+		SetSort(bson.D{{Key: "created_at", Value: -1}}). // Sort by newest first
+		SetLimit(int64(limit))
+
+	// Find all activity for this group
+	cursor, err := config.DB.Collection("shopping_cart_activity").Find(
+		context.Background(),
+		bson.M{"group_id": group.ID},
+		opts,
+	)
+
+	if err != nil {
+		http.Error(w, "Failed to fetch shopping cart activity", http.StatusInternalServerError)
+		return
+	}
+	defer cursor.Close(context.Background())
+
+	var activities []models.ShoppingCartActivity
+	if err = cursor.All(context.Background(), &activities); err != nil {
+		http.Error(w, "Failed to decode shopping cart activity", http.StatusInternalServerError)
+		return
+	}
+
+	// Update read status for the current user
+	go func() {
+		for _, activity := range activities {
+			if !activity.HasBeenReadBy(userID) {
+				_, err := config.DB.Collection("shopping_cart_activity").UpdateOne(
+					context.Background(),
+					bson.M{"_id": activity.ID},
+					bson.M{"$addToSet": bson.M{"read_by": userID}},
+				)
+
+				if err != nil {
+					log.Printf("Failed to update activity read status: %v", err)
+				}
+			}
+		}
+	}()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(ShoppingCartResponse{
+		Status:  "success",
+		Message: "Shopping cart activity retrieved successfully",
+		Data:    activities,
+	})
+}
+
+// MarkActivityReadHandler marks a shopping cart activity as read
+func MarkActivityReadHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Get user from context (set by AuthMiddleware)
+	userClaims, ok := middleware.GetUserFromContext(r.Context())
+	if !ok {
+		http.Error(w, "User not authenticated", http.StatusUnauthorized)
+		return
+	}
+
+	var request struct {
+		ActivityID string `json:"activity_id" validate:"required"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Validate required fields
+	if request.ActivityID == "" {
+		http.Error(w, "Activity ID is required", http.StatusBadRequest)
+		return
+	}
+
+	// Convert activity ID to ObjectID
+	activityID, err := primitive.ObjectIDFromHex(request.ActivityID)
+	if err != nil {
+		http.Error(w, "Invalid activity ID format", http.StatusBadRequest)
+		return
+	}
+
+	// Get user ID
+	userID, err := primitive.ObjectIDFromHex(userClaims.ID)
+	if err != nil {
+		http.Error(w, "Invalid user ID", http.StatusBadRequest)
+		return
+	}
+
+	// Find user to get their group
+	var user models.User
+	err = config.DB.Collection("users").FindOne(
+		context.Background(),
+		bson.M{"_id": userID},
+	).Decode(&user)
+
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			http.Error(w, "User not found", http.StatusNotFound)
+		} else {
+			http.Error(w, "Failed to fetch user", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// Find activity
+	var activity models.ShoppingCartActivity
+	err = config.DB.Collection("shopping_cart_activity").FindOne(
+		context.Background(),
+		bson.M{"_id": activityID},
+	).Decode(&activity)
+
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			http.Error(w, "Activity not found", http.StatusNotFound)
+		} else {
+			http.Error(w, "Failed to fetch activity", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// Verify user belongs to the activity's group
+	if user.GroupID != activity.GroupID {
+		http.Error(w, "User is not a member of this activity's group", http.StatusForbidden)
+		return
+	}
+
+	// Mark activity as read - update both the read_by array and the is_read flag
+	_, err = config.DB.Collection("shopping_cart_activity").UpdateOne(
+		context.Background(),
+		bson.M{"_id": activityID},
+		bson.M{
+			"$addToSet": bson.M{"read_by": userID},
+			"$set":      bson.M{"is_read": true},
+		},
+	)
+
+	if err != nil {
+		http.Error(w, "Failed to mark activity as read", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "Activity marked as read",
+	})
 }
