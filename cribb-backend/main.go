@@ -5,6 +5,7 @@ import (
 	"cribb-backend/handlers"
 	"cribb-backend/jobs"
 	"cribb-backend/middleware"
+	"fmt"
 	"log"
 	"net/http"
 )
@@ -65,14 +66,49 @@ func main() {
 	http.HandleFunc("/api/pantry/notify/read", middleware.CORSMiddleware(middleware.AuthMiddleware(handlers.MarkNotificationReadHandler)))
 	http.HandleFunc("/api/pantry/notify/delete", middleware.CORSMiddleware(middleware.AuthMiddleware(handlers.DeleteNotificationHandler)))
 
-	// Shopping cart routes - apply CORS and Auth middleware
-	http.HandleFunc("/api/shopping-cart/add", middleware.CORSMiddleware(middleware.AuthMiddleware(handlers.AddShoppingCartItemHandler)))
-	http.HandleFunc("/api/shopping-cart/update", middleware.CORSMiddleware(middleware.AuthMiddleware(handlers.UpdateShoppingCartItemHandler)))
-	http.HandleFunc("/api/shopping-cart/delete/", middleware.CORSMiddleware(middleware.AuthMiddleware(handlers.DeleteShoppingCartItemHandler)))
-	http.HandleFunc("/api/shopping-cart/list", middleware.CORSMiddleware(middleware.AuthMiddleware(handlers.ListShoppingCartItemsHandler)))
+	// Shopping cart routes - apply CORS and Auth middleware with validation
+	addCartItemValidation := middleware.ValidateRequest(handlers.AddShoppingCartItemHandler, handlers.AddShoppingCartItemRequest{})
+	updateCartItemValidation := middleware.ValidateRequest(handlers.UpdateShoppingCartItemHandler, handlers.UpdateShoppingCartItemRequest{})
 
-	log.Println("Server starting on port 8080...")
-	if err := http.ListenAndServe(":8080", nil); err != nil {
+	http.HandleFunc("/api/shopping-cart/add",
+		middleware.CORSMiddleware(
+			middleware.AuthMiddleware(
+				middleware.GroupAccessControlMiddleware(
+					addCartItemValidation))))
+
+	http.HandleFunc("/api/shopping-cart/update",
+		middleware.CORSMiddleware(
+			middleware.AuthMiddleware(
+				middleware.ResourceOwnershipMiddleware(
+					updateCartItemValidation, "shopping_cart", "item_id"))))
+
+	http.HandleFunc("/api/shopping-cart/delete/",
+		middleware.CORSMiddleware(
+			middleware.AuthMiddleware(
+				middleware.ResourceOwnershipMiddleware(
+					handlers.DeleteShoppingCartItemHandler, "shopping_cart", "path"))))
+
+	http.HandleFunc("/api/shopping-cart/list",
+		middleware.CORSMiddleware(
+			middleware.AuthMiddleware(
+				middleware.GroupAccessControlMiddleware(
+					handlers.ListShoppingCartItemsHandler))))
+
+	// New shopping cart activity routes
+	http.HandleFunc("/api/shopping-cart/activity",
+		middleware.CORSMiddleware(
+			middleware.AuthMiddleware(
+				middleware.GroupAccessControlMiddleware(
+					handlers.GetShoppingCartActivityHandler))))
+
+	http.HandleFunc("/api/shopping-cart/activity/read",
+		middleware.CORSMiddleware(
+			middleware.AuthMiddleware(
+				handlers.MarkActivityReadHandler)))
+
+	port := 8080
+	log.Printf("Server starting on port %d...", port)
+	if err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil); err != nil {
 		log.Fatal(err)
 	}
 }
