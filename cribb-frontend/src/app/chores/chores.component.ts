@@ -207,6 +207,7 @@ export class ChoresComponent implements OnInit {
     // Calculate new due date (2 days later)
     const currentDueDate = new Date(chore.due_date);
     currentDueDate.setDate(currentDueDate.getDate() + 2);
+    currentDueDate.setHours(0, 0, 0, 0);
     const newDueDate = currentDueDate.toISOString();
     
     // Update the chore due date
@@ -254,18 +255,18 @@ export class ChoresComponent implements OnInit {
     }
     console.log(this.user.groupName)
     
-    // Calculate the due date as the start of the *next* day in UTC
-    // const selectedDate = new Date(this.newIndividualChore.due_date + 'T00:00:00Z'); // Ensure parsing as UTC start
-    // selectedDate.setUTCDate(selectedDate.getUTCDate() + 1);
-    // const dueDateISO = selectedDate.toISOString();
+    // Calculate the due_date as the UTC start of the next day to cover the full selected day locally
+    const selectedDate = new Date(this.newIndividualChore.due_date);
+    selectedDate.setDate(selectedDate.getDate() + 1);
+    selectedDate.setHours(0, 0, 0, 0);
+    const dueDateISO = selectedDate.toISOString();
 
     const choreData = {
       title: this.newIndividualChore.title,
       description: this.newIndividualChore.description,
       group_name: this.user.groupName,
       assigned_to: this.newIndividualChore.assigned_to, // Send username
-      due_date: new Date(this.newIndividualChore.due_date + 'T00:00:00Z').toISOString(), // Send start of selected day UTC
-      // due_date: dueDateISO, // Send start of day AFTER selected date
+      due_date: dueDateISO, // Send UTC start of the next day so user gets full local day
       points: this.newIndividualChore.points
     };
     
