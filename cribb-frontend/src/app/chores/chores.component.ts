@@ -253,18 +253,35 @@ export class ChoresComponent implements OnInit {
       return;
     }
     console.log(this.user.groupName)
+    
+    // Calculate the due date as the start of the *next* day in UTC
+    // const selectedDate = new Date(this.newIndividualChore.due_date + 'T00:00:00Z'); // Ensure parsing as UTC start
+    // selectedDate.setUTCDate(selectedDate.getUTCDate() + 1);
+    // const dueDateISO = selectedDate.toISOString();
+
     const choreData = {
       title: this.newIndividualChore.title,
       description: this.newIndividualChore.description,
       group_name: this.user.groupName,
-      assigned_to: this.newIndividualChore.assigned_to,
-      due_date: new Date(this.newIndividualChore.due_date).toISOString(),
+      assigned_to: this.newIndividualChore.assigned_to, // Send username
+      due_date: new Date(this.newIndividualChore.due_date + 'T00:00:00Z').toISOString(), // Send start of selected day UTC
+      // due_date: dueDateISO, // Send start of day AFTER selected date
       points: this.newIndividualChore.points
     };
     
     this.choreService.createIndividualChore(choreData).subscribe({
       next: (newChore) => {
-        // Add the new chore to the local collection
+        // Find the display name from available roommates using the ID
+        const assignedRoommate = this.availableRoommates.find(r => r.id === newChore.assigned_to);
+        if (assignedRoommate) {
+          (newChore as any).assignee_name = assignedRoommate.name; // Add the name
+        } else {
+          // Fallback: try finding by username just in case, though ID should be primary
+          const roommateByUsername = this.availableRoommates.find(r => r.username === this.newIndividualChore.assigned_to);
+          (newChore as any).assignee_name = roommateByUsername ? roommateByUsername.name : newChore.assigned_to; 
+        }
+        
+        // Add the new chore (now with assignee_name) to the local collection
         this.chores.unshift(newChore);
         
         // Reset the form after successful creation

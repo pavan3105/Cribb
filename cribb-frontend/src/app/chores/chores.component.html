@@ -327,7 +327,7 @@
               {{ getUserDisplayName(chore.assigned_to) }}
             </span>
             <span>
-              <strong>Due:</strong> {{ chore.due_date | date : "mediumDate" }}
+              <strong>Due:</strong> {{ chore.due_date | date : "mediumDate" : "UTC" }}
             </span>
           </div>
 
