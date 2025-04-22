@@ -107,6 +107,7 @@ For support or feedback, please open an issue in the GitHub repository.
 ## Authors
 
 Developed for students and apartment dwellers to simplify shared living management by 
+
 Prajay Prashant
 
 Abhay Shastry
