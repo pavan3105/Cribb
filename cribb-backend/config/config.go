@@ -214,6 +214,32 @@ func initializeDatabase() error {
 		return fmt.Errorf("failed to create chore completion indexes: %v", err)
 	}
 
+	shoppingCartCollection := DB.Collection("shopping_cart")
+	shoppingCartIndexes := []mongo.IndexModel{
+		{
+			Keys: bson.D{{Key: "group_id", Value: 1}},
+		},
+		{
+			Keys: bson.D{{Key: "user_id", Value: 1}},
+		},
+		{
+			Keys: bson.D{{Key: "item_name", Value: 1}},
+		},
+		{
+			Keys: bson.D{
+				{Key: "user_id", Value: 1},
+				{Key: "group_id", Value: 1},
+				{Key: "item_name", Value: 1},
+			},
+			Options: options.Index().SetUnique(true),
+		},
+	}
+	_, err = shoppingCartCollection.Indexes().CreateMany(ctx, shoppingCartIndexes)
+	if err != nil {
+		return fmt.Errorf("failed to create shopping cart indexes: %v", err)
+	}
+
 	log.Println("Successfully initialized database collections and indexes")
 	return nil
+
 }
