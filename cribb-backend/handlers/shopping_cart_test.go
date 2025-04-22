@@ -32,9 +32,11 @@ func TestAddShoppingCartItemHandler(t *testing.T) {
 	cartItemReq := struct {
 		ItemName string  `json:"item_name"`
 		Quantity float64 `json:"quantity"`
+		Category string  `json:"category"`
 	}{
 		ItemName: "Milk",
 		Quantity: 2.0,
+		Category: "Dairy",
 	}
 
 	reqBody, _ := json.Marshal(cartItemReq)
@@ -59,6 +61,7 @@ func TestAddShoppingCartItemHandler(t *testing.T) {
 		var req struct {
 			ItemName string  `json:"item_name"`
 			Quantity float64 `json:"quantity"`
+			Category string  `json:"category"`
 		}
 
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -93,6 +96,7 @@ func TestAddShoppingCartItemHandler(t *testing.T) {
 			user.GroupID,
 			req.ItemName,
 			req.Quantity,
+			req.Category,
 		)
 
 		// Set ID (simulating insert)
@@ -153,6 +157,7 @@ func TestUpdateShoppingCartItemHandler(t *testing.T) {
 		GroupID:  testGroup.ID,
 		ItemName: "Bread",
 		Quantity: 1.0,
+		Category: "Bakery",
 		AddedAt:  time.Now(),
 	}
 
@@ -166,10 +171,12 @@ func TestUpdateShoppingCartItemHandler(t *testing.T) {
 		ItemID   string  `json:"item_id"`
 		ItemName string  `json:"item_name"`
 		Quantity float64 `json:"quantity"`
+		Category string  `json:"category"`
 	}{
 		ItemID:   existingItem.ID.Hex(),
 		ItemName: "Whole Wheat Bread",
 		Quantity: 2.0,
+		Category: "Organic Bakery",
 	}
 
 	reqBody, _ := json.Marshal(updateReq)
@@ -195,6 +202,7 @@ func TestUpdateShoppingCartItemHandler(t *testing.T) {
 			ItemID   string  `json:"item_id"`
 			ItemName string  `json:"item_name,omitempty"`
 			Quantity float64 `json:"quantity,omitempty"`
+			Category string  `json:"category,omitempty"`
 		}
 
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -247,6 +255,10 @@ func TestUpdateShoppingCartItemHandler(t *testing.T) {
 			item.Quantity = req.Quantity
 		}
 
+		if req.Category != "" {
+			item.Category = req.Category
+		}
+
 		// Update in mock database
 		testDB.UpdateShoppingCartItem(item)
 
@@ -277,6 +289,10 @@ func TestUpdateShoppingCartItemHandler(t *testing.T) {
 	}
 	if cartItem.Quantity != updateReq.Quantity {
 		t.Errorf("Expected quantity to be updated to %f, got %f", updateReq.Quantity, cartItem.Quantity)
+	}
+
+	if cartItem.Category != updateReq.Category {
+		t.Errorf("Expected category to be updated to %s, got %s", updateReq.Category, cartItem.Category)
 	}
 }
 
@@ -418,6 +434,7 @@ func TestListShoppingCartItemsHandler(t *testing.T) {
 		GroupID:  testGroup.ID,
 		ItemName: "Milk",
 		Quantity: 2.0,
+		Category: "Dairy",
 		AddedAt:  time.Now(),
 	}
 
@@ -427,6 +444,7 @@ func TestListShoppingCartItemsHandler(t *testing.T) {
 		GroupID:  testGroup.ID,
 		ItemName: "Bread",
 		Quantity: 1.0,
+		Category: "Bakery",
 		AddedAt:  time.Now(),
 	}
 
@@ -647,6 +665,7 @@ func TestDeleteShoppingCartItemNotOwnedHandler(t *testing.T) {
 		GroupID:  testGroup.ID,
 		ItemName: "Eggs",
 		Quantity: 1.0,
+		Category: "Dairy",
 		AddedAt:  time.Now(),
 	}
 
@@ -832,6 +851,7 @@ func TestAddDuplicateShoppingCartItemHandler(t *testing.T) {
 				user.GroupID,
 				req.ItemName,
 				req.Quantity,
+				time.April.String(),
 			)
 			newItem.ID = primitive.NewObjectID()
 			testDB.AddShoppingCartItem(*newItem)
@@ -938,6 +958,7 @@ func TestUpdateNonexistentShoppingCartItemHandler(t *testing.T) {
 			ItemID   string  `json:"item_id"`
 			ItemName string  `json:"item_name,omitempty"`
 			Quantity float64 `json:"quantity,omitempty"`
+			Category string  `json:"category,omitempty"`
 		}
 
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -1105,6 +1126,7 @@ func TestInvalidShoppingCartRequests(t *testing.T) {
 			ItemID   string  `json:"item_id"`
 			ItemName string  `json:"item_name,omitempty"`
 			Quantity float64 `json:"quantity,omitempty"`
+			Category string  `json:"category,omitempty"`
 		}
 
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

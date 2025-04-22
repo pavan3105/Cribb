@@ -13,6 +13,7 @@ type ShoppingCartItem struct {
 	GroupID  primitive.ObjectID `bson:"group_id" json:"group_id" validate:"required"`
 	ItemName string             `bson:"item_name" json:"item_name" validate:"required"`
 	Quantity float64            `bson:"quantity" json:"quantity" validate:"required,min=0.1"`
+	Category string             `bson:"category" json:"category"`
 	AddedAt  time.Time          `bson:"added_at" json:"added_at"`
 }
 
@@ -22,12 +23,14 @@ func CreateShoppingCartItem(
 	groupID primitive.ObjectID,
 	itemName string,
 	quantity float64,
+	category string,
 ) *ShoppingCartItem {
 	return &ShoppingCartItem{
 		UserID:   userID,
 		GroupID:  groupID,
 		ItemName: itemName,
 		Quantity: quantity,
+		Category: category,
 		AddedAt:  time.Now(),
 	}
 }
