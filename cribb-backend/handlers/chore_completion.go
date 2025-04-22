@@ -265,25 +265,41 @@ func GetGroupChoresHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check for overdue chores and update their status
-	now := time.Now()
+	// now := time.Now()
+	// Calculate the start of today in UTC
+	year, month, day := time.Now().UTC().Date()
+	startOfTodayUTC := time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
+
 	for i, chore := range chores {
+		// Remove previous logging
+		// log.Printf(...)
+
 		if chore.Status != models.ChoreStatusOverdue &&
 			chore.Status != models.ChoreStatusCompleted &&
-			!chore.DueDate.IsZero() &&
-			chore.DueDate.Before(now) {
-			chores[i].Status = models.ChoreStatusOverdue
+			!chore.DueDate.IsZero() {
 
-			// Update in database (don't wait for the result)
-			go func(choreID primitive.ObjectID) {
-				_, err := config.DB.Collection("chores").UpdateOne(
-					context.Background(),
-					bson.M{"_id": choreID},
-					bson.M{"$set": bson.M{"status": models.ChoreStatusOverdue}},
-				)
-				if err != nil {
-					log.Printf("Failed to update chore status to overdue: %v", err)
-				}
-			}(chore.ID)
+			// Calculate the start of the day AFTER the due date
+			year, month, day := chore.DueDate.Date()
+			startOfDueDayUTC := time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
+			endOfDueDateUTC := startOfDueDayUTC.AddDate(0, 0, 1) // Start of the next day
+
+			// Check if the current time is at or after the start of the day following the due date
+			if !startOfTodayUTC.Before(endOfDueDateUTC) { // Equivalent to startOfTodayUTC >= endOfDueDateUTC
+				// log.Printf("Marking chore ID %s as OVERDUE", chore.ID.Hex()) // Optional: keep logging if needed
+				chores[i].Status = models.ChoreStatusOverdue
+
+				// Update in database (don't wait for the result)
+				go func(choreID primitive.ObjectID) {
+					_, err := config.DB.Collection("chores").UpdateOne(
+						context.Background(),
+						bson.M{"_id": choreID},
+						bson.M{"$set": bson.M{"status": models.ChoreStatusOverdue}},
+					)
+					if err != nil {
+						log.Printf("Failed to update chore status to overdue: %v", err)
+					}
+				}(chore.ID)
+			}
 		}
 	}
 
