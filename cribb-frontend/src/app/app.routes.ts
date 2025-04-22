@@ -31,7 +31,8 @@ export const routes: Routes = [
         
         // Feature routes as children of dashboard
         { path: 'chores', component: ChoresComponent },       // Household chores feature
-        { path: 'pantry', component: PantryComponent }        // Pantry management feature
+        { path: 'pantry', component: PantryComponent },        // Pantry management feature
+        { path: 'shopping-cart', loadComponent: () => import('./shopping-cart/shopping-cart.component').then(m => m.ShoppingCartComponent) } // Shopping Cart feature
       ]
     },
 ];

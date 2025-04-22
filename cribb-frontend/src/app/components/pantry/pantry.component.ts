@@ -5,6 +5,9 @@ import { PantryService } from '../../services/pantry.service';
 import { PantryItem } from '../../models/pantry-item.model';
 import { AddItemComponent } from './add-item/add-item.component';
 import { ApiService } from '../../services/api.service';
+import { ShoppingCartService } from '../../services/shopping-cart.service';
+import { catchError } from 'rxjs/operators';
+import { of } from 'rxjs';
 
 /**
  * PantryComponent manages the household's food inventory
@@ -33,7 +36,17 @@ export class PantryComponent implements OnInit {
   loading: boolean = false;                // Loading indicator state
   error: string = '';                      // Error message to display
   showAddItemForm: boolean = false;        // Controls visibility of add item form
-  
+  // addToCartSuccessMessage: string | null = null; // Removed: Handled in modal now
+  // addToCartError: string | null = null; // Removed: Handled in modal now
+  // isAddingToCart: { [itemId: string]: boolean } = {}; // Removed: Handled in modal now
+
+  // State for Add to Cart Modal
+  showAddToCartModal: boolean = false;
+  itemForCartModal: PantryItem | null = null;
+  quantityForCartModal: number = 1;
+  isAddingToCartInModal: boolean = false;
+  addToCartModalError: string | null = null;
+
   // Household and update state
   groupName: string = '';                  // Current household/group name
   itemToUpdate: PantryItem | null = null;  // Item being updated (if any)
@@ -42,7 +55,8 @@ export class PantryComponent implements OnInit {
 
   constructor(
     private pantryService: PantryService,  // Service for pantry CRUD operations
-    private apiService: ApiService         // Service for user and auth operations
+    private apiService: ApiService,         // Service for user and auth operations
+    private shoppingCartService: ShoppingCartService // Inject ShoppingCartService
   ) {}
 
   /**
@@ -350,5 +364,63 @@ export class PantryComponent implements OnInit {
    */
   saveQuantityUpdate(): void {
     this.saveItemUpdate();
+  }
+
+  /**
+   * Opens the modal to add a specific pantry item to the shopping cart.
+   * @param item The pantry item to add.
+   */
+  openAddToCartModal(item: PantryItem): void {
+    this.itemForCartModal = item;
+    this.quantityForCartModal = 1; // Default to 1
+    this.addToCartModalError = null; // Clear previous errors
+    this.showAddToCartModal = true;
+  }
+
+  /**
+   * Closes the Add to Cart modal.
+   */
+  closeAddToCartModal(): void {
+    this.showAddToCartModal = false;
+    this.itemForCartModal = null;
+    this.quantityForCartModal = 1;
+    this.addToCartModalError = null;
+    this.isAddingToCartInModal = false; // Reset loading state
+  }
+
+  /**
+   * Confirms adding the item (from the modal) to the shopping cart with the specified quantity.
+   */
+  confirmAddToCart(): void {
+    if (!this.itemForCartModal || this.quantityForCartModal <= 0) {
+      this.addToCartModalError = 'Please enter a valid quantity.';
+      setTimeout(() => this.addToCartModalError = null, 3000);
+      return;
+    }
+
+    this.isAddingToCartInModal = true;
+    this.addToCartModalError = null;
+
+    this.shoppingCartService.addItem(this.itemForCartModal.name, this.quantityForCartModal)
+      .pipe(
+        catchError((err) => {
+          console.error('Error adding item to cart from modal:', err);
+          this.addToCartModalError = err instanceof Error ? err.message : 'Failed to add item to cart.';
+          // Don't clear error immediately, let user see it
+          // setTimeout(() => this.addToCartModalError = null, 3000);
+          return of(null); // Handle error locally
+        })
+      )
+      .subscribe(result => {
+        this.isAddingToCartInModal = false;
+        if (result) {
+          // Success
+          console.log(`Item ${this.itemForCartModal?.name} added to shopping cart.`);
+          // Optionally show a global success message here if desired
+          // this.showGlobalSuccessMessage(`${this.itemForCartModal?.name} added to cart!`);
+          this.closeAddToCartModal(); // Close modal on success
+        }
+        // Error case is handled in catchError, message is displayed in modal
+      });
   }
 }
