@@ -828,17 +828,17 @@ func TestAddDuplicateShoppingCartItemHandler(t *testing.T) {
 		}
 
 		// Check if item already exists with same name for this user and group
-		var updatedItem models.ShoppingCartItem
+		var finalItem models.ShoppingCartItem // Renamed for clarity
 		itemExists := false
 
 		for _, item := range testDB.ShoppingCartItems {
 			if item.UserID == userID && item.GroupID == user.GroupID && item.ItemName == req.ItemName {
-				// Update existing item
-				updatedItem = item
-				updatedItem.Quantity = req.Quantity
-				updatedItem.AddedAt = time.Now() // Update timestamp
+				// Simulate Incrementing existing item quantity
+				finalItem = item
+				finalItem.Quantity += req.Quantity // Add the requested quantity
+				finalItem.AddedAt = time.Now()     // Update timestamp
 
-				testDB.UpdateShoppingCartItem(updatedItem)
+				testDB.UpdateShoppingCartItem(finalItem) // Update in the mock DB
 				itemExists = true
 				break
 			}
@@ -851,17 +851,17 @@ func TestAddDuplicateShoppingCartItemHandler(t *testing.T) {
 				user.GroupID,
 				req.ItemName,
 				req.Quantity,
-				time.April.String(),
+				"", // Assuming category is empty if not provided in this test scenario
 			)
 			newItem.ID = primitive.NewObjectID()
 			testDB.AddShoppingCartItem(*newItem)
-			updatedItem = *newItem
+			finalItem = *newItem
 		}
 
 		// Return item
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(updatedItem)
+		json.NewEncoder(w).Encode(finalItem) // Return the final state
 	})
 
 	// Call the handler
@@ -881,12 +881,13 @@ func TestAddDuplicateShoppingCartItemHandler(t *testing.T) {
 
 	// Verify item was updated, not added
 	if cartItem.ID != existingItem.ID {
-		t.Errorf("Expected to update existing item ID, got new item")
+		t.Errorf("Expected to update existing item ID (%s), got different ID (%s)", existingItem.ID.Hex(), cartItem.ID.Hex())
 	}
 
-	// Verify quantity was updated
-	if cartItem.Quantity != cartItemReq.Quantity {
-		t.Errorf("Expected quantity to be updated to %f, got %f", cartItemReq.Quantity, cartItem.Quantity)
+	// Verify quantity was incremented
+	expectedQuantity := existingItem.Quantity + cartItemReq.Quantity
+	if cartItem.Quantity != expectedQuantity {
+		t.Errorf("Expected quantity to be incremented to %f (%.2f + %.2f), got %f", expectedQuantity, existingItem.Quantity, cartItemReq.Quantity, cartItem.Quantity)
 	}
 
 	// Verify timestamp is newer

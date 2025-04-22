@@ -12,6 +12,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -90,91 +91,117 @@ func AddShoppingCartItemHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create new shopping cart item
-	shoppingCartItem := models.CreateShoppingCartItem(
-		userID,
-		user.GroupID,
-		request.ItemName,
-		request.Quantity,
-		request.Category,
-	)
-
-	// Use upsert to either insert a new item or update an existing one
+	// Define filter to find the item
 	filter := bson.M{
 		"user_id":   userID,
 		"group_id":  user.GroupID,
 		"item_name": request.ItemName,
 	}
 
-	update := bson.M{
-		"$set": bson.M{
-			"quantity": request.Quantity,
-			"category": request.Category,
-			"added_at": shoppingCartItem.AddedAt,
-		},
-	}
+	// Variable to hold the final item state
+	var finalShoppingCartItem models.ShoppingCartItem
+	itemWasUpdated := false // Flag to track if we updated or inserted
 
-	opts := options.Update().SetUpsert(true)
+	// Attempt to find the existing item first
+	var existingItem models.ShoppingCartItem
+	err = config.DB.Collection("shopping_cart").FindOne(context.Background(), filter).Decode(&existingItem)
 
-	result, err := config.DB.Collection("shopping_cart").UpdateOne(
-		context.Background(),
-		filter,
-		update,
-		opts,
-	)
+	if err == nil {
+		// Item found - Increment quantity and update timestamp/category
+		itemWasUpdated = true
+		update := bson.M{
+			"$inc": bson.M{"quantity": request.Quantity}, // Increment quantity
+			"$set": bson.M{
+				"added_at": time.Now(), // Update timestamp
+				// Optionally update category if provided?
+				// "category": request.Category, // Keep existing category or update? Decide policy.
+			},
+		}
+		// If category is provided in the request, update it as well
+		if request.Category != "" {
+			update["$set"].(bson.M)["category"] = request.Category
+		}
 
-	if err != nil {
-		log.Printf("Failed to add/update shopping cart item: %v", err)
-		http.Error(w, "Failed to add item to shopping cart", http.StatusInternalServerError)
-		return
-	}
-
-	// If an item was inserted, set the ID
-	if result.UpsertedID != nil {
-		shoppingCartItem.ID = result.UpsertedID.(primitive.ObjectID)
-	} else {
-		// If an item was updated, fetch it to get the ID
-		var existingItem models.ShoppingCartItem
-		err = config.DB.Collection("shopping_cart").FindOne(
+		_, updateErr := config.DB.Collection("shopping_cart").UpdateOne(
 			context.Background(),
 			filter,
-		).Decode(&existingItem)
-
-		if err == nil {
-			shoppingCartItem.ID = existingItem.ID
+			update,
+		)
+		if updateErr != nil {
+			log.Printf("Failed to increment shopping cart item quantity: %v", updateErr)
+			http.Error(w, "Failed to update item quantity in shopping cart", http.StatusInternalServerError)
+			return
 		}
+		// Fetch the updated item to return it
+		fetchErr := config.DB.Collection("shopping_cart").FindOne(context.Background(), filter).Decode(&finalShoppingCartItem)
+		if fetchErr != nil {
+			log.Printf("Failed to fetch updated shopping cart item: %v", fetchErr)
+			http.Error(w, "Failed to fetch updated item", http.StatusInternalServerError)
+			return
+		}
+
+	} else if errors.Is(err, mongo.ErrNoDocuments) {
+		// Item not found - Insert new item
+		itemWasUpdated = false
+		newItem := models.CreateShoppingCartItem(
+			userID,
+			user.GroupID,
+			request.ItemName,
+			request.Quantity,
+			request.Category,
+		)
+		insertResult, insertErr := config.DB.Collection("shopping_cart").InsertOne(context.Background(), newItem)
+		if insertErr != nil {
+			log.Printf("Failed to insert new shopping cart item: %v", insertErr)
+			http.Error(w, "Failed to add item to shopping cart", http.StatusInternalServerError)
+			return
+		}
+		newItem.ID = insertResult.InsertedID.(primitive.ObjectID)
+		finalShoppingCartItem = *newItem // Use the newly inserted item data (Dereference the pointer)
+
+	} else {
+		// Other database error during FindOne
+		log.Printf("Error checking for existing shopping cart item: %v", err)
+		http.Error(w, "Database error checking for item", http.StatusInternalServerError)
+		return
 	}
 
 	// Log the activity
 	go func() {
-		// Create activity log
+		activityAction := models.CartActivityTypeAdd
+		activityDetails := "Added item to shopping cart"
+		if itemWasUpdated {
+			activityAction = models.CartActivityTypeUpdate // Using Update type for increment as well
+			activityDetails = fmt.Sprintf("Increased quantity of %s by %.2f (New total: %.2f)", finalShoppingCartItem.ItemName, request.Quantity, finalShoppingCartItem.Quantity)
+		}
+
 		activity := models.CreateShoppingCartActivity(
 			user.GroupID,
-			shoppingCartItem.ID,
-			shoppingCartItem.ItemName,
+			finalShoppingCartItem.ID, // Use the ID from the final item state
+			finalShoppingCartItem.ItemName,
 			userID,
 			user.Name,
-			models.CartActivityTypeAdd,
-			shoppingCartItem.Quantity,
-			"Added item to shopping cart",
+			activityAction,                 // Use the determined action
+			finalShoppingCartItem.Quantity, // Log the *new* total quantity
+			activityDetails,                // Use the determined details
 		)
 
-		_, err := config.DB.Collection("shopping_cart_activity").InsertOne(
+		_, insertErr := config.DB.Collection("shopping_cart_activity").InsertOne(
 			context.Background(),
 			activity,
 		)
 
-		if err != nil {
-			log.Printf("Failed to create shopping cart activity record: %v", err)
+		if insertErr != nil {
+			log.Printf("Failed to create shopping cart activity record: %v", insertErr)
 		}
 	}()
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusOK) // 200 OK for both add and increment
 	json.NewEncoder(w).Encode(ShoppingCartResponse{
 		Status:  "success",
-		Message: "Item added to shopping cart",
-		Data:    shoppingCartItem,
+		Message: "Item processed successfully", // Updated generic message
+		Data:    finalShoppingCartItem,
 	})
 }
 
