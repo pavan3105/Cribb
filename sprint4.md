@@ -641,3 +641,232 @@ The test output demonstrates comprehensive test coverage for all backend handler
   - Authentication boundary testing
 
 These test results demonstrate that the Cribb backend, including the newly implemented shopping cart functionality, is robust and ready for integration with the frontend application.
+
+## Frontend Work
+
+### Features
+- **Shopping Cart Component**: 
+  - Implemented a new shopping cart component where users can add needed items
+  - Added functionality to add shopping cart items to the pantry after buying
+  - Designed and implemented UI for shopping cart management with add, edit, and delete operations
+  - Created integration with the backend API for data persistence
+
+### Fixes
+- Fixed bug where only one chore would be displayed at a time on refresh
+- Improved error handling throughout the application
+- Enhanced UI responsiveness and mobile compatibility
+
+### Tests
+- Added more unit tests to increase code coverage
+- Implemented additional Cypress tests for end-to-end testing of key features
+
+## Testing Overview
+
+### Frontend Unit Tests
+
+#### 1. LoginComponent Tests
+- Should create
+- Should initialize with empty form
+- Should have invalid form when empty
+- Should toggle password visibility
+- Should not submit if form is invalid
+- Should show success message temporarily
+- Should login correctly with valid credentials
+- Should fail login with invalid credentials
+
+#### 2. LandingComponent Tests
+- Should create
+- Should render main heading
+- Should contain welcome text
+- Should navigate to login when login button is clicked
+- Should navigate to signup when signup button is clicked
+
+#### 3. PantryComponent Tests
+- Should create
+- Should initialize with user data
+- Should initialize with only groupCode
+- Should handle initialization with no group information
+- Should handle API errors when loading items
+- Should toggle add item form
+- Should not close add item form when clicking inside the form
+- Should close add item form when clicking outside
+- Should filter items by category
+- Should add item to shopping list
+- Should handle error when adding to shopping list
+- Should handle error when no user is logged in
+- Should use an item
+- Should handle error when using item
+- Should handle undefined selectedQuantity
+- Should not use more than available quantity
+- Should handle increment/decrement quantity
+- Should not decrement below 1
+- Should not increment beyond available quantity
+- Should save quantity updates
+- Should handle errors when saving item update
+- Should cancel item update
+- Should initialize and save updates
+- Should calculate correct item statistics
+- Should notify when items are added
+- Should delete an item after confirmation
+- Should not delete an item if not confirmed
+- Should handle error when deleting item
+
+#### 4. NotificationDropdownComponent Tests
+- Should create
+- Should initialize with unread count from service
+- Should toggle dropdown when bell icon is clicked
+- Should close dropdown when clicking outside
+- Should close dropdown when navigating
+- Should handle panel closeDropdown event
+- Should dispose overlay when closing dropdown
+- Should handle large number of unread notifications
+- Should handle zero unread notifications
+- Should clean up on destroy
+- Should handle unsubscribe properly when no overlay exists
+
+#### 5. AddItemComponent Tests
+- Should create
+- Should initialize form with group name from user data
+- Should handle case when user has no group name
+- Should handle case when no user data is available
+- Should validate form fields correctly
+- Should format expiration date correctly
+- Should submit form successfully
+- Should not submit if form is invalid
+- Should handle API error during submission
+
+#### 6. ShoppingCartService Tests
+- Should be created
+
+#### 7. NotificationItemComponent Tests
+- Should create
+- Should display notification content
+- Should apply correct class based on notification type
+- Should show appropriate icons for each notification type
+- Should apply different background for unread notifications
+- Should hide mark as read button for read notifications
+- Should emit markAsRead event when the mark as read button is clicked
+- Should emit delete event when the delete button is clicked
+- Should stop event propagation when clicking buttons
+- Should return correct icons based on notification type
+- Should format date correctly
+
+#### 8. NotificationPanelComponent Tests
+- Should create
+- Should subscribe to notifications on init
+- Should navigate when "Show All" button is clicked
+- Should handle events from notification-item components
+- Should show "Show All" button
+- Should pass notification to notification-item component
+- Should default to pantry tab
+- Should handle notification updates after deletion
+- Should cleanup subscriptions on destroy
+- Should delete notification
+- Should handle notification updates after marked as read
+- Should handle tab clicks from the template
+- Should emit event when navigating to all notifications
+- Should mark notification as read
+- Should display notification items when there are notifications
+- Should display empty state when there are no notifications
+
+#### 9. SignupComponent Tests
+- Should create
+- Should initialize with empty forms
+- Should have invalid signup form when empty
+- Should validate phone number format
+- Should validate password requirements
+- Should toggle password visibility
+- Should handle join group modal
+- Should handle create group modal
+- Should submit join group form successfully
+- Should handle join group form submission failure
+- Should submit create group form successfully
+- Should handle create group form submission failure
+
+#### 10. ShoppingCartComponent Tests
+- **General Tests**
+  - Should create
+  - Should call getCartItems on initialization
+  - Should display cart items from the service signal
+
+- **Add Item Tests**
+  - Should open and close the add item modal
+  - Should reset add item form when closing modal
+  - Should call shoppingCartService.addItem on valid submission
+  - Should show error and not call service on invalid add submission
+  - Should show error if addItem service call fails
+
+- **Edit Item Tests**
+  - Should open the edit modal and populate fields
+  - Should close the edit modal and reset fields
+  - Should call shoppingCartService.updateItem on valid edit submission
+  - Should show error and not call service on invalid edit submission
+  - Should show error if updateItem service call fails
+
+- **Delete Item Tests**
+  - Should call shoppingCartService.deleteItem
+  - Should show error if deleteItem service call fails
+
+- **Add to Pantry Tests**
+  - Should open Add to Pantry modal and set item
+  - Should close Add to Pantry modal and reset fields
+  - Should call pantryService.addItem and shoppingCartService.deleteItem on confirm
+  - Should show error if category is missing on confirm
+  - Should show error if user/group info is missing
+  - Should show error if pantryService.addItem fails
+  - Should show error if shoppingCartService.deleteItem fails after pantry add
+  - Should handle adding to pantry without an expiry date
+  - Should show error for invalid expiry date format
+
+### Cypress End-to-End Tests
+
+#### 1. Shopping Cart Tests (`shopping-cart.cy.ts`)
+- Verifying UI elements in the shopping cart view
+- Adding new items to the shopping cart
+- Editing existing shopping cart items
+- Adding shopping cart items to the pantry
+- Verifying items are properly added to the pantry
+- Deleting items from the shopping cart
+
+#### 2. Pantry Management Tests (`pantry.cy.ts`)
+- Navigation to pantry section and verification of UI elements
+- Adding new pantry items
+- Updating quantity and expiration date of pantry items
+- Using a quantity of a pantry item
+- Deleting pantry items
+
+#### 3. Chores Tests (`chores.cy.ts`)
+- Displaying chores list and tabs
+- Opening and closing new chore form
+- Creating new individual chores
+- Creating new recurring chores
+- Completing chores assigned to the current user
+- Postponing chores assigned to the current user
+
+#### 4. Dashboard Tests (`dashboard.cy.ts`)
+- Redirecting to login page when not authenticated
+- Displaying loading state when fetching user data
+- Displaying user profile information correctly
+- Toggling sidebar functionality
+- Navigation between different dashboard sections
+- Error handling for failed API requests
+
+#### 5. Login Tests (`login.cy.js`)
+- Checking login button functionality
+- Validation of form fields
+- Successful login with valid credentials
+- Error handling for invalid credentials
+- Password visibility toggling
+- Form validation for password requirements
+- Disabling submit button during loading state
+
+#### 6. Signup Tests (`signup.cy.js`)
+- Checking signup button functionality
+- Validation errors for empty fields
+- Validation of phone number format
+- Validation of password requirements
+- Successful form submission for group creation
+
+#### 7. Landing Page Tests (`landing.cy.ts`)
+- Verification of landing page elements
+- Navigation to login and signup pages
