@@ -1,7 +1,9 @@
-# Sprint 4 - Backend Work
+# Sprint 4 Documentation
 
-## Completed Work
-### Shopping Cart Feature
+## Backend Work
+
+### Completed Work
+#### Shopping Cart Feature
 
 * Implemented shared shopping cart system for household grocery management
 * Created data models for shopping cart items with user attribution
