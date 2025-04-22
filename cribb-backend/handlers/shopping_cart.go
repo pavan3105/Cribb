@@ -23,6 +23,7 @@ import (
 type AddShoppingCartItemRequest struct {
 	ItemName string  `json:"item_name" validate:"required,min=1"`
 	Quantity float64 `json:"quantity" validate:"required,min=0.1"`
+	Category string  `json:"category"`
 }
 
 // UpdateShoppingCartItemRequest defines the request structure for updating a shopping cart item
@@ -30,6 +31,7 @@ type UpdateShoppingCartItemRequest struct {
 	ItemID   string  `json:"item_id" validate:"required"`
 	ItemName string  `json:"item_name,omitempty" validate:"min=1"`
 	Quantity float64 `json:"quantity,omitempty" validate:"min=0.1"`
+	Category string  `json:"category,omitempty"`
 }
 
 // Response structures
@@ -94,6 +96,7 @@ func AddShoppingCartItemHandler(w http.ResponseWriter, r *http.Request) {
 		user.GroupID,
 		request.ItemName,
 		request.Quantity,
+		request.Category,
 	)
 
 	// Use upsert to either insert a new item or update an existing one
@@ -106,6 +109,7 @@ func AddShoppingCartItemHandler(w http.ResponseWriter, r *http.Request) {
 	update := bson.M{
 		"$set": bson.M{
 			"quantity": request.Quantity,
+			"category": request.Category,
 			"added_at": shoppingCartItem.AddedAt,
 		},
 	}
@@ -259,6 +263,10 @@ func UpdateShoppingCartItemHandler(w http.ResponseWriter, r *http.Request) {
 
 	if request.Quantity > 0 {
 		updateFields["quantity"] = request.Quantity
+	}
+
+	if request.Category != "" {
+		updateFields["category"] = request.Category
 	}
 
 	// If no fields to update, return early
