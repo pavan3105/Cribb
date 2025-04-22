@@ -7,7 +7,7 @@
             <p><strong>Email:</strong> {{ user?.email }}</p>
             <p><strong>Phone:</strong> {{ user?.phone }}</p>
             <p><strong>Room Number:</strong> {{ user?.roomNo || 'Not set' }}</p>
-            <p *ngIf="user?.groupId"><strong>Group ID:</strong> {{ user?.groupId }}</p>
+            <p *ngIf="user?.groupCode"><strong>Group Code:</strong> {{ user?.groupCode || 'Not set' }}</p>
             <p *ngIf="user?.groupName"><strong>Group Name:</strong> {{ user?.groupName }}</p>
         </div>
         <div class="mt-6 text-center">
