@@ -186,7 +186,6 @@ export class SignupComponent implements OnInit {
         this.router.navigate(['/login']);
       },
       error: (error) => {
-        console.error('Registration failed', error);
         this.errorMessage = 'Registration failed: ' + (error.message || 'Please try again');
         this.loading = false;
       }
@@ -224,7 +223,6 @@ export class SignupComponent implements OnInit {
         this.router.navigate(['/login']);
       },
       error: (error) => {
-        console.error('Registration failed', error);
         this.errorMessage = 'Registration failed: ' + (error.message || 'Please try again');
         this.loading = false;
       }

@@ -3,10 +3,29 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { NotificationItemComponent } from './notification-item.component';
 import { Notification, NotificationType } from '../../../models/notification.model';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
+import { ShoppingCartService } from '../../../services/shopping-cart.service';
+import { ApiService } from '../../../services/api.service';
+import { of } from 'rxjs';
+
+// Mock ApiService
+class MockApiService {
+  getCurrentUser() {
+    return { id: 'user123', groupName: 'testGroup' };
+  }
+  user$ = of(this.getCurrentUser());
+}
+
+// Mock ShoppingCartService
+class MockShoppingCartService {
+  addItem = jasmine.createSpy('addItem').and.returnValue(of({}));
+}
 
 describe('NotificationItemComponent', () => {
   let component: NotificationItemComponent;
   let fixture: ComponentFixture<NotificationItemComponent>;
+  let shoppingCartService: MockShoppingCartService;
 
   // Mock notifications for testing all types
   const mockExpiredNotification: Notification = {
@@ -59,13 +78,23 @@ describe('NotificationItemComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [NotificationItemComponent]
+      imports: [NotificationItemComponent],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: ApiService, useClass: MockApiService },
+        { provide: ShoppingCartService, useClass: MockShoppingCartService }
+      ]
     }).compileComponents();
 
     fixture = TestBed.createComponent(NotificationItemComponent);
     component = fixture.componentInstance;
+    shoppingCartService = TestBed.inject(ShoppingCartService) as unknown as MockShoppingCartService;
+
     // Set default notification
     component.notification = mockExpiredNotification;
+
+    fixture.detectChanges();
   });
 
   it('should create', () => {
